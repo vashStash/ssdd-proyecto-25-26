@@ -7,15 +7,42 @@ package es.um.sisdist.backend.grpc;
 
 service GrpcService
 {
-    rpc Ping(PingRequest) returns (PingResponse);
+	rpc HealthCheck(HealthRequest) returns (HealthResponse);
+    rpc PreguntarLlama(PromptRequest) returns (TicketResponse);
+	rpc ConsultaTicket(TicketRequest) returns (PromptResponse);
 }
 
-message PingRequest
+message HealthRequest
 {
-	int32 v = 1;
+	string id_user = 1;
 }
 
-message PingResponse
+message HealthResponse
 {
-	int32 v = 1;
+	string health_status = 1;
+}
+
+message PromptRequest
+{
+	//id del usuario
+	string id_user = 1;
+	string prompt_request = 2; 
+}
+
+message TicketResponse
+{
+	string status = 1;
+	string ticket_response = 2;
+}
+
+message TicketRequest
+{
+	string id_user = 1;
+	string ticket_request = 2;
+}
+
+message PromptResponse
+{
+	string status = 1;
+	string response = 2;
 }
