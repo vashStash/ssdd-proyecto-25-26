@@ -7,19 +7,8 @@ package es.um.sisdist.backend.grpc;
 
 service GrpcService
 {
-	rpc HealthCheck(HealthRequest) returns (HealthResponse);
     rpc PreguntarLlama(PromptRequest) returns (TicketResponse);
 	rpc ConsultaTicket(TicketRequest) returns (PromptResponse);
-}
-
-message HealthRequest
-{
-	string id_user = 1;
-}
-
-message HealthResponse
-{
-	string health_status = 1;
 }
 
 message PromptRequest

@@ -9,9 +9,6 @@ import java.net.http.HttpResponse.BodyHandler;
 import java.util.logging.Logger;
 
 import es.um.sisdist.backend.grpc.GrpcServiceGrpc;
-import es.um.sisdist.backend.grpc.HealthRequest;
-import es.um.sisdist.backend.grpc.HealthResponse;
-
 import es.um.sisdist.backend.grpc.PromptRequest;
 import es.um.sisdist.backend.grpc.PromptResponse;
 import es.um.sisdist.backend.grpc.TicketRequest;
@@ -28,16 +25,8 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		this.logger = logger;
 	}
 
-	@Override
-	public void healthCheck(HealthRequest request, StreamObserver<HealthResponse> responseObserver) {
+	private void healthCheck() {
 		
-		String id_user = request.getIdUser();
-
-		// Se comprueban el JWT del usuario, etc.
-
-
-		//
-
 		HttpClient client = HttpClient.newHttpClient();
 		HttpRequest aliveCheckRequest = HttpRequest.newBuilder()
 		.uri(URI.create("http://localhost:5020/healthcheck")) 
@@ -53,8 +42,19 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 			return;
 		}
 
-		responseObserver.onNext(HealthResponse.newBuilder().setHealthStatus(String.valueOf(aliveCheckResponse.statusCode())).build());
-		responseObserver.onCompleted();
+		int status = aliveCheckResponse.statusCode();
+
+		while( status == 204 ){
+
+			try {
+				aliveCheckResponse = client.send(aliveCheckRequest, HttpResponse.BodyHandlers.discarding());
+			} catch (IOException | InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return;
+			}
+			status = aliveCheckResponse.statusCode();
+		}
 	}
 
 	@Override
@@ -82,6 +82,8 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 
 		HttpResponse<String> promptResponse;
 		try {
+			// Comprobamos si el servicio Llama está disponible.
+			healthCheck();
 			promptResponse = client.send(promptRequest, HttpResponse.BodyHandlers.ofString());
 		} catch (IOException | InterruptedException e) {
 			// TODO Auto-generated catch block
@@ -91,18 +93,33 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 
 		int promptStatus = promptResponse.statusCode();
 
-		// Todo ha ido bien y el nuevo prompt ha sido aceptado dandonos el nuevo ticket:
-		if (promptStatus == 202) {
+		// Processing:
+		if ( promptStatus == 102 ) {
 
-			String ticket = promptResponse.headers().firstValue("Location").toString();
-			responseObserver.onNext(TicketResponse.newBuilder().setStatus(String.valueOf(promptStatus)).setTicketResponse(ticket).build());
+			// Está ocupado.
+			responseObserver.onNext(TicketResponse.newBuilder().setStatus(String.valueOf("BUSY")).build());
 			responseObserver.onCompleted();
 			return;
 		}
 
-		// Procesando y Formato inválido.
+		// Formato Inválido.
+		if (promptStatus == 415) {
+			
+			responseObserver.onNext(TicketResponse.newBuilder().setStatus(String.valueOf("FORMATO INVALIDO")).build());
+			responseObserver.onCompleted();
+			return;
+		}
 
-		responseObserver.onNext(TicketResponse.newBuilder().setStatus(String.valueOf(promptStatus)).build());
+		// Todo ha ido bien y el nuevo prompt ha sido aceptado dandonos el nuevo ticket:
+		if (promptStatus == 202) {
+
+			String ticket = promptResponse.headers().firstValue("Location").toString();
+			responseObserver.onNext(TicketResponse.newBuilder().setStatus(String.valueOf("ACEPTADO")).setTicketResponse(ticket).build());
+			responseObserver.onCompleted();
+			return;
+		}
+
+		// En caso de llegar aquí, cerramos el flujo.
 		responseObserver.onCompleted();
 	}
 
@@ -120,12 +137,13 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		HttpClient client = HttpClient.newHttpClient();
 
 		HttpRequest consultaTicketRequest = HttpRequest.newBuilder()
-		.uri(URI.create("http://localhost:5020/response"+ ticket)) 
+		.uri(URI.create("http://localhost:5020/response" + ticket)) 
 		.GET()
 		.build();
 
 		HttpResponse<String> consultaTicketResponse;
 		try {
+			healthCheck();
 			consultaTicketResponse = client.send(consultaTicketRequest, HttpResponse.BodyHandlers.ofString());
 		} catch (IOException | InterruptedException e) {
 			// TODO Auto-generated catch block
@@ -137,13 +155,26 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		// Se ha obtenido respuesta.
 		if (statusConsulta == 200) {
 			String respuestaLlama = consultaTicketResponse.body();
-			responseObserver.onNext(PromptResponse.newBuilder().setStatus(String.valueOf(statusConsulta)).setResponse(respuestaLlama).build());
+			responseObserver.onNext(PromptResponse.newBuilder().setStatus("READY").setResponse(respuestaLlama).build());
 			responseObserver.onCompleted();
 			return;
 		}
 
-		// Inicializando, Token inexistente, Procesando
-		responseObserver.onNext(PromptResponse.newBuilder().setStatus(String.valueOf(statusConsulta)).build());
+		// Está ocupado
+		if (statusConsulta == 102 ) {
+
+			responseObserver.onNext(PromptResponse.newBuilder().setStatus("BUSY").build());
+			responseObserver.onCompleted();
+			return;
+		}
+
+		if (statusConsulta == 404) {
+
+			responseObserver.onNext(PromptResponse.newBuilder().setStatus("TOKEN INVALIDO").build());
+			responseObserver.onCompleted();
+			return;
+		}
+
 		responseObserver.onCompleted();
 	}
 }
