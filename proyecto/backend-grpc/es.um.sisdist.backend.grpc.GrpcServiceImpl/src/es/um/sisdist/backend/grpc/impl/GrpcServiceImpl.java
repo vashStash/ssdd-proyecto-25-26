@@ -1,16 +1,26 @@
 package es.um.sisdist.backend.grpc.impl;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandler;
 import java.util.logging.Logger;
 
-import es.um.sisdist.backend.grpc.GrpcServiceGrpc;
 import es.um.sisdist.backend.grpc.PingRequest;
 import es.um.sisdist.backend.grpc.PingResponse;
+import es.um.sisdist.backend.grpc.GrpcServiceGrpc;
+import es.um.sisdist.backend.grpc.PromptRequest;
+import es.um.sisdist.backend.grpc.PromptResponse;
+import es.um.sisdist.backend.grpc.TicketRequest;
+import es.um.sisdist.backend.grpc.TicketResponse;
 import io.grpc.stub.StreamObserver;
 
 class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase 
 {
 	private Logger logger;
-	
+
     public GrpcServiceImpl(Logger logger) 
     {
 		super();
@@ -26,52 +36,156 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 	}
 
 
-/*
-	@Override
-	public void storeImage(ImageData request, StreamObserver<Empty> responseObserver)
-    {
-		logger.info("Add image " + request.getId());
-    	imageMap.put(request.getId(),request);
-    	responseObserver.onNext(Empty.newBuilder().build());
-    	responseObserver.onCompleted();
+	private void healthCheck() {
+		
+		HttpClient client = HttpClient.newHttpClient();
+		HttpRequest aliveCheckRequest = HttpRequest.newBuilder()
+		.uri(URI.create("http://localhost:5020/healthcheck")) 
+		.GET()
+		.build();
+
+		HttpResponse<Void> aliveCheckResponse;
+		try {
+			aliveCheckResponse = client.send(aliveCheckRequest, HttpResponse.BodyHandlers.discarding());
+		} catch (IOException | InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		}
+
+		int status = aliveCheckResponse.statusCode();
+
+		while( status == 204 ){
+
+			try {
+				aliveCheckResponse = client.send(aliveCheckRequest, HttpResponse.BodyHandlers.discarding());
+			} catch (IOException | InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return;
+			}
+			status = aliveCheckResponse.statusCode();
+		}
 	}
 
 	@Override
-	public StreamObserver<ImageData> storeImages(StreamObserver<Empty> responseObserver) 
+	public void preguntarLlama(PromptRequest request, StreamObserver<TicketResponse> responseObserver) 
 	{
-		// La respuesta, sólo un objeto Empty
-		responseObserver.onNext(Empty.newBuilder().build());
 
-		// Se retorna un objeto que, al ser llamado en onNext() con cada
-		// elemento enviado por el cliente, reacciona correctamente
-		return new StreamObserver<ImageData>() {
-			@Override
-			public void onCompleted() {
-				// Terminar la respuesta.
-				responseObserver.onCompleted();
-			}
-			@Override
-			public void onError(Throwable arg0) {
-			}
-			@Override
-			public void onNext(ImageData imagedata) 
-			{
-				logger.info("Add image (multiple) " + imagedata.getId());
-		    	imageMap.put(imagedata.getId(), imagedata);	
-			}
-		};
+		String userPrompt = request.getPromptRequest();
+		String userId = request.getIdUser();
+
+		// Se comprueban el JWT del usuario, etc.
+
+
+		//
+
+		HttpClient client = HttpClient.newHttpClient();
+		String jsonBody = "{\"prompt\": \"" + userPrompt + "\"}";
+		
+		// Intentamos enviar la petición de un nuevo prompt al servidor Llama:
+
+		HttpRequest promptRequest = HttpRequest.newBuilder()
+		.uri(URI.create("http://localhost:5020/prompt")) 
+		.header("Content-Type", "application/json")
+		.POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+		.build();
+
+		HttpResponse<String> promptResponse;
+		try {
+			// Comprobamos si el servicio Llama está disponible.
+			healthCheck();
+			promptResponse = client.send(promptRequest, HttpResponse.BodyHandlers.ofString());
+		} catch (IOException | InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		}
+
+		int promptStatus = promptResponse.statusCode();
+
+		// Processing:
+		if ( promptStatus == 102 ) {
+
+			// Está ocupado.
+			responseObserver.onNext(TicketResponse.newBuilder().setStatus(String.valueOf("BUSY")).build());
+			responseObserver.onCompleted();
+			return;
+		}
+
+		// Formato Inválido.
+		if (promptStatus == 415) {
+			
+			responseObserver.onNext(TicketResponse.newBuilder().setStatus(String.valueOf("FORMATO INVALIDO")).build());
+			responseObserver.onCompleted();
+			return;
+		}
+
+		// Todo ha ido bien y el nuevo prompt ha sido aceptado dandonos el nuevo ticket:
+		if (promptStatus == 202) {
+
+			String ticket = promptResponse.headers().firstValue("Location").toString();
+			responseObserver.onNext(TicketResponse.newBuilder().setStatus(String.valueOf("ACEPTADO")).setTicketResponse(ticket).build());
+			responseObserver.onCompleted();
+			return;
+		}
+
+		// En caso de llegar aquí, cerramos el flujo.
+		responseObserver.onCompleted();
 	}
 
-	@Override
-	public void obtainImage(ImageSpec request, StreamObserver<ImageData> responseObserver) {
-		// TODO Auto-generated method stub
-		super.obtainImage(request, responseObserver);
-	}
+@Override
+	public void consultaTicket(TicketRequest request, StreamObserver<PromptResponse> responseObserver) 
+	{
+		String id_user = request.getIdUser();
+		String ticket = request.getTicketRequest();
+		
+		// Se comprueban el JWT del usuario, etc.
 
-	@Override
-	public StreamObserver<ImageSpec> obtainCollage(StreamObserver<ImageData> responseObserver) {
-		// TODO Auto-generated method stub
-		return super.obtainCollage(responseObserver);
+
+		//
+
+		HttpClient client = HttpClient.newHttpClient();
+
+		HttpRequest consultaTicketRequest = HttpRequest.newBuilder()
+		.uri(URI.create("http://localhost:5020/response" + ticket)) 
+		.GET()
+		.build();
+
+		HttpResponse<String> consultaTicketResponse;
+		try {
+			healthCheck();
+			consultaTicketResponse = client.send(consultaTicketRequest, HttpResponse.BodyHandlers.ofString());
+		} catch (IOException | InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		}
+		int statusConsulta = consultaTicketResponse.statusCode();
+
+		// Se ha obtenido respuesta.
+		if (statusConsulta == 200) {
+			String respuestaLlama = consultaTicketResponse.body();
+			responseObserver.onNext(PromptResponse.newBuilder().setStatus("READY").setResponse(respuestaLlama).build());
+			responseObserver.onCompleted();
+			return;
+		}
+
+		// Está ocupado
+		if (statusConsulta == 102 ) {
+
+			responseObserver.onNext(PromptResponse.newBuilder().setStatus("BUSY").build());
+			responseObserver.onCompleted();
+			return;
+		}
+
+		if (statusConsulta == 404) {
+
+			responseObserver.onNext(PromptResponse.newBuilder().setStatus("TOKEN INVALIDO").build());
+			responseObserver.onCompleted();
+			return;
+		}
+
+		responseObserver.onCompleted();
 	}
-	*/
 }
