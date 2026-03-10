@@ -8,6 +8,8 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandler;
 import java.util.logging.Logger;
 
+import es.um.sisdist.backend.grpc.PingRequest;
+import es.um.sisdist.backend.grpc.PingResponse;
 import es.um.sisdist.backend.grpc.GrpcServiceGrpc;
 import es.um.sisdist.backend.grpc.PromptRequest;
 import es.um.sisdist.backend.grpc.PromptResponse;
@@ -24,6 +26,15 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		super();
 		this.logger = logger;
 	}
+
+	@Override
+	public void ping(PingRequest request, StreamObserver<PingResponse> responseObserver) 
+	{
+		logger.info("Recived PING request, value = " + request.getV());
+		responseObserver.onNext(PingResponse.newBuilder().setV(request.getV()).build());
+		responseObserver.onCompleted();
+	}
+
 
 	private void healthCheck() {
 		
