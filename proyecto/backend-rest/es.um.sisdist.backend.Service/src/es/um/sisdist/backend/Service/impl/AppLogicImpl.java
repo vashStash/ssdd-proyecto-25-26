@@ -1,20 +1,22 @@
-/**
- *
- */
 package es.um.sisdist.backend.Service.impl;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
 import es.um.sisdist.backend.grpc.GrpcServiceGrpc;
 import es.um.sisdist.backend.grpc.PingRequest;
+import es.um.sisdist.models.UserDTO;
+import es.um.sisdist.models.UserDTOUtils;
 import es.um.sisdist.backend.dao.DAOFactoryImpl;
 import es.um.sisdist.backend.dao.IDAOFactory;
+import es.um.sisdist.backend.dao.models.Chat;
 import es.um.sisdist.backend.dao.models.User;
 import es.um.sisdist.backend.dao.models.utils.UserUtils;
 import es.um.sisdist.backend.dao.user.IUserDAO;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import jakarta.ws.rs.core.Response;
 
 /**
  * @author dsevilla
@@ -90,13 +92,52 @@ public class AppLogicImpl
     {
         Optional<User> u = dao.getUserByEmail(email);
 
+
         if (u.isPresent())
         {
+            System.out.println("applogic: usuario recuperado" + u.get().toString());
             String hashed_pass = UserUtils.md5pass(pass);
+            System.out.println("Contraseña recibida (hashed): " + hashed_pass + " \nContraseña almacenada: " + u.get().getPassword_hash());
             if (0 == hashed_pass.compareTo(u.get().getPassword_hash()))
                 return u;
         }
-
+        System.out.println("applogic: Nose ha encontrado el user para login");
         return Optional.empty();
+    }
+
+    public boolean registerUser(User user){
+        return dao.registerUser(user);
+    }
+
+    //helper para el register
+    public boolean userExists(User u){
+        if(!dao.getUserByEmail(u.getEmail()).equals(Optional.empty())){
+            System.out.println("applogic: El email ya existe");
+            return true;
+        }
+        if (!dao.getUserById(u.getId()).equals(Optional.empty())){
+            System.out.println("applogic: El id ya existe");
+            return true;
+        }
+        System.out.println("applogic: el usuario no existe");
+        return false;
+        
+
+        // if(!(dao.getUserByEmail(u.getEmail()).equals(Optional.empty())
+        //         || dao.getUserById(u.getId()).equals(Optional.empty()))){ 
+        //     return true;
+        // }
+        // return false;
+
+        // return dao.getUserByEmail(u.getEmail()).equals(Optional.empty()) 
+        //     ? dao.getUserById(u.getId()).equals(Optional.empty()) 
+        //         ? true
+        //         : false
+        //     : false;
+    }
+
+    //////////////////////// CHATS /////////////////////
+    public List<Chat> getChatList(){
+        
     }
 }
