@@ -1,21 +1,31 @@
 package es.um.sisdist.backend.Service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
 import es.um.sisdist.backend.grpc.GrpcServiceGrpc;
 import es.um.sisdist.backend.grpc.PingRequest;
+import es.um.sisdist.backend.grpc.PromptRequest;
+import es.um.sisdist.backend.grpc.TicketResponse;
+import es.um.sisdist.backend.grpc.TicketRequest;
+import es.um.sisdist.backend.grpc.PromptResponse;
+import es.um.sisdist.models.ResultadoEnvioLlama;
 import es.um.sisdist.models.UserDTO;
 import es.um.sisdist.models.UserDTOUtils;
 import es.um.sisdist.backend.dao.DAOFactoryImpl;
 import es.um.sisdist.backend.dao.IDAOFactory;
 import es.um.sisdist.backend.dao.models.Chat;
 import es.um.sisdist.backend.dao.models.User;
+import es.um.sisdist.backend.dao.models.utils.ChatStatus;
 import es.um.sisdist.backend.dao.models.utils.UserUtils;
 import es.um.sisdist.backend.dao.user.IUserDAO;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.InternalServerErrorException;
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Response;
 
 /**
@@ -92,7 +102,6 @@ public class AppLogicImpl
     {
         Optional<User> u = dao.getUserByEmail(email);
 
-
         if (u.isPresent())
         {
             System.out.println("applogic: usuario recuperado" + u.get().toString());
@@ -138,6 +147,48 @@ public class AppLogicImpl
 
     //////////////////////// CHATS /////////////////////
     public List<Chat> getChatList(){
-        
+        return new ArrayList<Chat>();
     }
+
+    //Enviamos la solicitud para recibir un Token:
+
+    public ResultadoEnvioLlama enviarPromptLlama(String userId, String prompt) {
+    
+        try {
+        
+            PromptRequest request = PromptRequest.newBuilder()
+                    .setIdUser(userId)
+                    .setPromptRequest(prompt)
+                    .build();
+
+            TicketResponse tr = blockingStub.preguntarLlama(request);
+
+            return new ResultadoEnvioLlama(tr.getStatus(), tr.getTicketResponse());
+
+        } catch (Exception e) {
+            // Si gRPC falla o el servidor Python está caído
+            return new ResultadoEnvioLlama("ERROR", e.getMessage());
+        }
+    }
+
+    // Consulta de token
+
+    public ResultadoEnvioLlama consultarRespuestaLlama(String userId, String ticket) {
+        
+        try {
+            
+            TicketRequest request = TicketRequest.newBuilder().setTicketRequest(ticket)
+                    .build();
+
+            PromptResponse response = blockingStub.consultaTicket(request);
+
+            return new ResultadoEnvioLlama(response.getStatus(), response.getResponse());
+
+        } catch (Exception e) {
+            // Si gRPC falla o el servidor Python está caído
+            return new ResultadoEnvioLlama("ERROR_CONEXION", e.getMessage());
+        }
+
+    }
+
 }
