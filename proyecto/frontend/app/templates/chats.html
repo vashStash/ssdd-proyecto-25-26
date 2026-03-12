@@ -38,8 +38,8 @@
             
             Caja de mensajes 
             <div class="chat-box" id="chatBox">
-            {% if chat_seleccionado.dialogues and chat_seleccionado.dialogues|length > 0 %}
-                {% for mensaje in chat_seleccionado.dialogues %}
+            {% if chat_seleccionado.conversation and chat_seleccionado.conversation|length > 0 %}
+                {% for mensaje in chat_seleccionado.conversation %}
                     <div class="message user-message">{{ mensaje.prompt }}</div>
                     <div class="message bot-message">{{ mensaje.answer }}</div>
                 {% endfor %}
@@ -64,37 +64,41 @@
         </div>
         <!--- Script para hacer polling al servidor, una vez se ha enviado una prompt -->
         <script>
-        function esperarRespuesta(requestId) {
+        function esperarRespuesta(requestId, userId, dialogueId) {
             console.log("requestId: ", requestId)
             const intervalId = setInterval(() => {
-                fetch("http://localhost:8080/Service/" + requestId)
+                fetch(`http://localhost:8080/u/${userId}/dialogue/${dialogueId}?t=${requestId}`)
+
                     .then(res =>{
                         console.log("respuesta recibida del checkPrimpt: ", res.status)
                         if (res.status === 204) {
                             // todavía no se ha generado la solicitud
                             return null;
                         }
-                        if (!res.ok) {
-                            throw new Error("Error en la respuesta del servidor: " + res.status);
-                        }
                         return res.json();
-                    } )
+                    })
                     .then(data => {
                         if (!data) return;  // nada que hacer si no hay datos
 
                         console.log("Datos recibidos del backend:", data);
 
-                        clearInterval(intervalId);
-                        if (data.status === 'done') {
+                        if (data.status === 'READY') {
+                            clearInterval(intervalId); /*
                             const chatBox = document.getElementById('chatBox');
                             const respuesta = document.createElement('div');
                             respuesta.className = "mensaje respuesta";
                             respuesta.textContent = data.answer;
                             chatBox.appendChild(respuesta);
                             fetch('http://localhost:5010/{{ userid }}/chats')
-                        } else if (data.status === 'error') {
+                            */
+                            location.reload();
+                        }
+                        else if (data.status == 'BUSY') {
+                            console.log("Llama sigue escribiendo...");
+                        }
+                        else if (data.status === 'error' || data.status == 'FINISHED') {
                             clearInterval(intervalId);
-                            alert("Error al obtener la respuesta: " + data.message);
+                            alert("Chat finalizado o ha ocurrido un error al obtener la respuesta: " + data.message);
                         }
                     })
                     .catch(error => {
@@ -109,7 +113,7 @@
                 Esperando respuesta del servidor...
             </div>
             <script>
-                esperarRespuesta("{{ request_id }}");
+                esperarRespuesta("{{ request_id }}", "{{ userid }}", "{{ chat_seleccionado.id }}");
             </script>
         {% endif %}
         {% if busy_chat %}
