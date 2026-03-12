@@ -148,6 +148,7 @@ public class AppLogicImpl
     //////////////////////// CHATS /////////////////////
     public List<Chat> getChatList(){
         return new ArrayList<Chat>();
+
     }
 
     //Enviamos la solicitud para recibir un Token:
