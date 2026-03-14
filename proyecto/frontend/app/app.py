@@ -1,4 +1,6 @@
-from flask import Flask, render_template, send_from_directory, url_for, request, redirect, flash
+from datetime import time
+
+from flask import Flask, render_template, send_from_directory, url_for, jsonify, request, redirect, flash
 from flask_login import LoginManager, login_manager, current_user, login_user, login_required, logout_user
 import requests
 import os
@@ -151,6 +153,9 @@ def load_user(user_id):
             return user
     return None
 
+def obtener_chats_usuario(userid):
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/chats'
+    
 @app.route('/chats', methods=['GET', 'POST'])
 @login_required
 def chats(): 
@@ -160,14 +165,138 @@ def chats():
     try:
         r = requests.get(query_url)
         r.raise_for_status()
-        chatlist_json = r.json()
-        
-    except requests.RequestException as e:
+        return r.json()
+    except Exception as e:
         print(f"Error al obtener los chats: {e}")
-        chatlist_json = []
+        return []
+
+
+@app.route('/chats', methods=['GET'])
+@login_required
+def chats():
+    userid = current_user.id
+    lista_chats = obtener_chats_usuario(userid)
+    return render_template('chats.html', chats=lista_chats, userid=userid)
+    
+@app.route('/next', methods=['POST'])
+@login_required
+def next():
+    dialogueid = request.form.get('dialogueid')
+    user_prompt = request.form.get('prompt')
+    userid = current_user.id
+
+    next_token = request.form.get('next_token', '').strip()
+
+    if not dialogueid or not user_prompt:
+        flash("Error: No se ha seleccionado un chat o el mensaje está vacío.")
+        return redirect(url_for('chats'))
+
+    datos = {
+        "prompt": user_prompt,
+        "creationDate": int(time.time()* 1000)
+    }
+
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/dialogue/{dialogueid}/next/{next_token}'
+
+    try:
+        r = requests.post(query_url, json=datos, allow_redirects=False)
+        request_id = None
+        if r.status_code in [201, 202]:    # ACCEPTED
+            location_url = r.headers.get('Location')
+            if location_url and 't=' in location_url:
+                request_id = location_url.split('t=')[-1]
+
+        elif r.status_code == 204:  # BUSY
+            flash("La IA está ocupada procesando otro mensaje. Espera un momento.")
+        elif r.status_code == 400:  # FORMATO INVALIDO
+            flash("Error: Formato de mensaje inválido.")
+
+    except Exception as e:
+        print(f"Error en el flujo: {e}")
+        return redirect(url_for('chats'))
+ 
+    chats_del_usuario = obtener_chats_usuario(userid)
+    chat_actual = next((c for c in chats_del_usuario if str(c.get('id')) == str(dialogueid)), None)
+
+    return render_template('chats.html', 
+                               chats=chats_del_usuario,
+                               chat_seleccionado=chat_actual,
+                               userid=userid,
+                               request_id=request_id)
+    
+@app.route('/consultar_estado/<dialogueid>/<request_id>')
+@login_required
+def consultar_estado(dialogueid, request_id):
+    userid = current_user.id
+    
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/dialogue/{dialogueid}?t={request_id}'
+    
+    try:
+        r = requests.get(query_url)
+        
+        if r.status_code == 202:
+            return jsonify({"status": "BUSY"}), 200
             
-    return render_template('chats.html', userid=current_user.id)
-    #return render_template('chats.html', userid=current_user.id ,chats=chatlist_json)
+        elif r.status_code == 200:
+            chat_dto = r.json() 
+            
+            conversations = chat_dto.get('conversation', [])
+            
+            if conversations:
+                ultima_conv = conversations[-1]
+                respuesta_texto = ultima_conv.get('answer', '')
+            else:
+                respuesta_texto = "Error: El historial de mensajes está vacío."
+
+            return jsonify({
+                "status": "READY",
+                "answer": respuesta_texto,
+                "next_token": chat_dto.get('nextUrl') # El nuevo token generado en Java
+            }), 200
+
+        elif r.status_code == 404:
+            return jsonify({"status": "ERROR", "message": "Chat no encontrado"}), 404
+        else:
+            return jsonify({"status": "ERROR", "message": "Fallo en el servidor Llama"}), 500
+
+    except Exception as e:
+        print(f"DEBUG: Error en polling de ticket {request_id}: {e}")
+        return jsonify({"status": "ERROR", "message": "Error de conexión"}), 500
+
+
+@app.route('/chats/<userid>/nuevo-chat')
+def nuevo_chat():
+    chat_name = request.form.get('chat_name')
+    logging.info(chat_name)
+    # TODO: cambiar esto según el nombre del endpoint
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/nuevochat'
+    chat_data = { 'chatName' : chat_name }
+    r = requests.post(query_url, json=chat_data)
+
+    if r.status_code == 201:
+        # request para actualizar la lista de chats
+        chats_url = f'http://backend-rest:8080/Service/u/{userid}/chats'
+        try:
+            r_chats = requests.get(chats_url)
+            r_chats.raise_for_status()
+            chatlist_json = r_chats.json()
+        except requests.RequestException as e:
+            logging.error(f"Error al obtener los chats: {e}")
+            chatlist_json = []
+
+        #Busca el chat en la lista
+        chat_seleccionado = None
+        if chatlist_json:
+            for chat in chatlist_json:
+                if chat['name'] == chat_name:
+                    chat_seleccionado = chat
+                    break
+
+        return render_template('chats.html', userid=current_user.id, chat_seleccionado=chat_seleccionado, chats=chatlist_json)
+    else:
+        flash("Error al crear el chat. Inténtalo de nuevo.", "danger")
+        return redirect(url_for('chats'))
+
 
 @app.route('/chats/<userid>/nuevo-chat')
 def nuevo_chat():
