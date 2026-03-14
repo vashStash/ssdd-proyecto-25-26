@@ -152,31 +152,21 @@ def load_user(user_id):
         if user.id == user_id:
             return user
     return None
-
-def obtener_chats_usuario(userid):
-    query_url = f'http://backend-rest:8080/Service/u/{userid}/chats'
     
 @app.route('/chats', methods=['GET', 'POST'])
 @login_required
 def chats(): 
 #def chats(userid, chatlist?):
     userid = current_user.id
-    query_url = f'http://backend-rest:8080/Service/u/{userid}/chat'
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/chats'
     try:
         r = requests.get(query_url)
         r.raise_for_status()
-        return r.json()
+        return render_template('chats.html', chats=lista_chats, userid=userid)
+    
     except Exception as e:
         print(f"Error al obtener los chats: {e}")
         return []
-
-
-@app.route('/chats', methods=['GET'])
-@login_required
-def chats():
-    userid = current_user.id
-    lista_chats = obtener_chats_usuario(userid)
-    return render_template('chats.html', chats=lista_chats, userid=userid)
     
 @app.route('/next', methods=['POST'])
 @login_required
@@ -262,41 +252,6 @@ def consultar_estado(dialogueid, request_id):
     except Exception as e:
         print(f"DEBUG: Error en polling de ticket {request_id}: {e}")
         return jsonify({"status": "ERROR", "message": "Error de conexión"}), 500
-
-
-@app.route('/chats/<userid>/nuevo-chat')
-def nuevo_chat():
-    chat_name = request.form.get('chat_name')
-    logging.info(chat_name)
-    # TODO: cambiar esto según el nombre del endpoint
-    query_url = f'http://backend-rest:8080/Service/u/{userid}/nuevochat'
-    chat_data = { 'chatName' : chat_name }
-    r = requests.post(query_url, json=chat_data)
-
-    if r.status_code == 201:
-        # request para actualizar la lista de chats
-        chats_url = f'http://backend-rest:8080/Service/u/{userid}/chats'
-        try:
-            r_chats = requests.get(chats_url)
-            r_chats.raise_for_status()
-            chatlist_json = r_chats.json()
-        except requests.RequestException as e:
-            logging.error(f"Error al obtener los chats: {e}")
-            chatlist_json = []
-
-        #Busca el chat en la lista
-        chat_seleccionado = None
-        if chatlist_json:
-            for chat in chatlist_json:
-                if chat['name'] == chat_name:
-                    chat_seleccionado = chat
-                    break
-
-        return render_template('chats.html', userid=current_user.id, chat_seleccionado=chat_seleccionado, chats=chatlist_json)
-    else:
-        flash("Error al crear el chat. Inténtalo de nuevo.", "danger")
-        return redirect(url_for('chats'))
-
 
 @app.route('/chats/<userid>/nuevo-chat')
 def nuevo_chat():
