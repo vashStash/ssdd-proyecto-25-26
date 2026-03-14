@@ -1,4 +1,6 @@
-from flask import Flask, render_template, send_from_directory, url_for, request, redirect, flash
+from datetime import time
+
+from flask import Flask, render_template, send_from_directory, url_for, jsonify, request, redirect, flash
 from flask_login import LoginManager, login_manager, current_user, login_user, login_required, logout_user
 import requests
 import os
@@ -156,7 +158,7 @@ def load_user(user_id):
 
 @app.route('/chats', methods=['GET', 'POST'])
 @login_required
-def chats(): 
+def chats():
 #def chats(userid, chatlist?):
     userid = 'borrame'
     query_url = f'http://backend-rest:8080/Service/u/{userid}/chat'
@@ -171,6 +173,53 @@ def chats():
             
     return render_template('chats.html')
     #return render_template('chats.html', userid=current_user.id ,chats=chatlist_json)
+
+@app.route('/next', methods=['POST'])
+@login_required
+def next():
+    dialogueid = request.form.get('dialogueid')
+    user_prompt = request.form.get('prompt')
+    userid = current_user.id
+
+    next_token = request.form.get('next_token', '').strip()
+
+    datos = {
+        "prompt": user_prompt,
+        "timestamp": int(time.time()* 1000)
+    }
+
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/dialogue/{dialogueid}/next/{next_token}'
+
+    try:
+        r = requests.post(query_url, json=datos, allow_redirects=False)
+        
+        request_id = None
+        if r.status_code in [201, 202]:    # ACCEPTED
+            location_url = r.headers.get('Location')
+            if location_url and 't=' in location_url:
+                request_id = location_url.split('t=')[-1]
+
+        elif r.status_code == 204:  # BUSY
+            flash("La IA está ocupada procesando otro mensaje. Espera un momento.")
+        elif r.status_code == 400:  # FORMATO INVALIDO
+            flash("Error: Formato de mensaje inválido.")
+ 
+      #  chats_del_usuario = obtener_chats_desde_java(userid) 
+      #  chat_actual = encontrar_chat_por_id(chats_del_usuario, dialogueid)
+
+        return render_template('chats.html', 
+                               chats=chats_del_usuario,
+                               chat_seleccionado=chat_actual,
+                               userid=userid,
+                               request_id=request_id)
+
+    except Exception as e:
+        print(f"Error en el flujo: {e}")
+        return redirect(url_for('chats'))
+    
+
+
+
 
 
 if __name__ == '__main__':

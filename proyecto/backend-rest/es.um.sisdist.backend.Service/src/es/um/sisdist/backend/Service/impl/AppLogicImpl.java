@@ -1,8 +1,12 @@
 package es.um.sisdist.backend.Service.impl;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 import es.um.sisdist.backend.grpc.GrpcServiceGrpc;
@@ -11,12 +15,15 @@ import es.um.sisdist.backend.grpc.PromptRequest;
 import es.um.sisdist.backend.grpc.TicketResponse;
 import es.um.sisdist.backend.grpc.TicketRequest;
 import es.um.sisdist.backend.grpc.PromptResponse;
+import es.um.sisdist.models.ChatDTO;
+import es.um.sisdist.models.DialogueDTO;
 import es.um.sisdist.models.ResultadoEnvioLlama;
 import es.um.sisdist.models.UserDTO;
 import es.um.sisdist.models.UserDTOUtils;
 import es.um.sisdist.backend.dao.DAOFactoryImpl;
 import es.um.sisdist.backend.dao.IDAOFactory;
 import es.um.sisdist.backend.dao.models.Chat;
+import es.um.sisdist.backend.dao.models.Dialogue;
 import es.um.sisdist.backend.dao.models.User;
 import es.um.sisdist.backend.dao.models.utils.ChatStatus;
 import es.um.sisdist.backend.dao.models.utils.UserUtils;
@@ -36,6 +43,8 @@ public class AppLogicImpl
 {
     IDAOFactory daoFactory;
     IUserDAO dao;
+    // CHATS SIN BD
+    private Map<String, ChatDTO> mapChats = new ConcurrentHashMap<>();
 
     private static final Logger logger = Logger.getLogger(AppLogicImpl.class.getName());
 
@@ -65,6 +74,7 @@ public class AppLogicImpl
                 .usePlaintext().build();
         blockingStub = GrpcServiceGrpc.newBlockingStub(channel);
         //asyncStub = GrpcServiceGrpc.newStub(channel);
+        
     }
 
     public static AppLogicImpl getInstance()
@@ -153,10 +163,30 @@ public class AppLogicImpl
 
     //Enviamos la solicitud para recibir un Token:
 
-    public ResultadoEnvioLlama enviarPromptLlama(String userId, String prompt) {
+    public ResultadoEnvioLlama enviarPromptLlama(String userId, String dialogueId, String token, String prompt) {
     
+        Chat chat = chatDAO.findById(dialogueId);
+        
+        if (chat == null) {
+            return new ResultadoEnvioLlama("ERROR", "Chat no encontrado");
+        }
+
+        if (token != null && !token.equals(chat.getNextToken())) {
+            return new ResultadoEnvioLlama("TOKEN_INVALIDO", null);
+        }
+
+        if (chat.getStatus() == ChatStatus.BUSY) {
+            return new ResultadoEnvioLlama("BUSY", null);
+        }
+
         try {
         
+            Dialogue nuevoMensaje = new Dialogue(UUID.randomUUID().toString(), dialogueId, prompt, "");
+            chat.addDialogue(nuevoMensaje);
+            chat.setStatus(ChatStatus.BUSY);
+            chat.setNextToken(null);
+            chatDAO.update(chat);
+
             PromptRequest request = PromptRequest.newBuilder()
                     .setIdUser(userId)
                     .setPromptRequest(prompt)
@@ -167,14 +197,16 @@ public class AppLogicImpl
             return new ResultadoEnvioLlama(tr.getStatus(), tr.getTicketResponse());
 
         } catch (Exception e) {
-            // Si gRPC falla o el servidor Python está caído
+            // Si cae lo mejor es no bloquearlo
+            chat.setStatus(ChatStatus.READY);
+            chatDAO.update(chat);
             return new ResultadoEnvioLlama("ERROR", e.getMessage());
         }
     }
 
     // Consulta de token
 
-    public ResultadoEnvioLlama consultarRespuestaLlama(String userId, String ticket) {
+    public ChatDTO consultarRespuestaLlama(String userId, String dialogueId, String ticket) {
         
         try {
             

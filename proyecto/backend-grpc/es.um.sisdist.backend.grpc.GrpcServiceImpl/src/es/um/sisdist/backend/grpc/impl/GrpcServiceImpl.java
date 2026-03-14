@@ -124,7 +124,9 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		// Todo ha ido bien y el nuevo prompt ha sido aceptado dandonos el nuevo ticket:
 		if (promptStatus == 202) {
 
-			String ticket = promptResponse.headers().firstValue("Location").toString();
+			String localizacion = promptResponse.headers().firstValue("Location").toString();
+			String ticket = localizacion.substring(localizacion.lastIndexOf("/") + 1);
+
 			responseObserver.onNext(TicketResponse.newBuilder().setStatus(String.valueOf("ACEPTADO")).setTicketResponse(ticket).build());
 			responseObserver.onCompleted();
 			return;

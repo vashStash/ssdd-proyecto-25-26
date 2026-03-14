@@ -35,7 +35,7 @@
         </form> -->#}
     </div>
 
-    {#
+    
     {% if chat_seleccionado %}
     <!-- Mostrar el historial del chat -->
         <div class="main-content">
@@ -54,17 +54,20 @@
 
             <!-- Caja de texto para enviar nuevos mensajes 
             Esto habrá que modificarlo con la función para enviar mensaje de app.py-->
-            <form method="post" action="{{ url_for('enviar_prompt',
-                                userid=userid, chatid=chat_seleccionado['id']) }}">
-                
-                <input type="hidden" name="nextToken" value="{{ chat_seleccionado['nextUrl'] }}">
-                {% if chat_seleccionado.status == "READY" %}
-                <div class="input-group mt-3">
-                    <input type="text" name="mensaje" class="form-control" placeholder="Escribe tu mensaje...">
-                    <button type="submit" class="btn btn-primary">Enviar</button>
-                </div>
-                {% endif %}
-            </form>
+            <form method="post" action="{{ url_for('next') }}">
+    
+        <input type="hidden" name="dialogueid" value="{{ chat_seleccionado.id }}">
+        
+        <input type="hidden" name="nextToken" value="{{ chat_seleccionado['nextUrl'] }}">
+        
+        {% if chat_seleccionado.status == "READY" %}
+        <div class="input-group mt-3">
+            <input type="text" name="prompt" class="form-control" placeholder="Escribe tu mensaje...">
+            <button type="submit" class="btn btn-primary">Enviar</button>
+        </div>
+        {% endif %}
+        </form>
+    </form>
         </div>
         <!--- Script para hacer polling al servidor, una vez se ha enviado una prompt -->
         <script>
@@ -97,7 +100,7 @@
                             */
                             location.reload();
                         }
-                        else if (data.status == 'BUSY') {
+                        else if (data.status === 'BUSY') {
                             console.log("Llama sigue escribiendo...");
                         }
                         else if (data.status === 'error' || data.status == 'FINISHED') {
@@ -134,11 +137,11 @@
             <button type="button" class="btn button" data-bs-toggle="modal" data-bs-target="#chatModal"> Nuevo Chat </button>
         </div> 
         {% endif %}
-    #}
+   
         
 </div>
 
-{#
+
 <!--- Ventana modal que aparece al crear un nuevho chat con alguno de los botones -->
 <div class="modal fade" id="chatModal" tabindex="-1" aria-labelledby="chatModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -158,6 +161,6 @@
         </form>
     </div>
 </div>
-#}
+
 
 {% endblock %}

@@ -8,15 +8,15 @@ public class DialogueDTO {
     private String dialogueId;
     private String prompt;
     private String answer;
-    private Date creationDate;
+    private Date timestamp;
     private Date answerDate;
 
     
-    public DialogueDTO(String dialogueId, String prompt, String answer, Date creationDate, Date answerDate) {
+    public DialogueDTO(String dialogueId, String prompt, String answer, Date timestamp, Date answerDate) {
         this.dialogueId = dialogueId;
         this.prompt = prompt;
         this.answer = answer;
-        this.creationDate = creationDate;
+        this.timestamp = timestamp;
         this.answerDate = answerDate;
     }
     
@@ -44,12 +44,12 @@ public class DialogueDTO {
         this.answer = answer;
     }
     
-    public Date getcreationDate() {
-        return creationDate;
+    public Date getTimestamp() {
+        return timestamp;
     }
     
-    public void setcreationDate(Date creationDate) {
-        this.creationDate = creationDate;
+    public void setTimestamp(Date timestamp) {
+        this.timestamp = timestamp;
     }
 
     public Date getAnswerDate() {
@@ -72,7 +72,7 @@ public class DialogueDTO {
     @Override
     public String toString() {
         return "DialogueDTO [dialogueId=" + dialogueId + ", prompt=" + prompt + ", answer=" + answer + ", creationDate="
-                + creationDate + ", answerDate=" + answerDate + "]";
+                + timestamp + ", answerDate=" + answerDate + "]";
     }
 
     public DialogueDTO(){};

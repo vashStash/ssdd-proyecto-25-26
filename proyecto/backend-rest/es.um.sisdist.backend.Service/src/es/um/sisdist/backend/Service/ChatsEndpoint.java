@@ -32,40 +32,51 @@ import jakarta.ws.rs.core.UriInfo;
 public class ChatsEndpoint {
     private AppLogicImpl impl = AppLogicImpl.getInstance();
 
-
     @GET
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/chats")
     public Response getChatList(@PathParam("username") String username, UserDTO uo)
     {
+        
         return Response.ok().build();
     }
 
     @POST
-    @Path("/u/{userId}/dialogue/{dialogueId}/next")
+    @Path("/u/{userId}/dialogue/{dialogueId}/next/{token : (.*)}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response enviarPrompt (@PathParam("userId") String userId, @PathParam("dialogueId") String dialogueId, DialogueDTO input, @Context UriInfo uriInfo){
+    public Response enviarPrompt (@PathParam("userId") String userId, @PathParam("dialogueId") String dialogueId, @PathParam("token") String token, DialogueDTO input, @Context UriInfo uriInfo){
 
-        ResultadoEnvioLlama resLlama = impl.enviarPromptLlama(userId, input.getPrompt());
+        String tokenTratado = (token == null || token.isEmpty()) ? null : token;
 
+        ResultadoEnvioLlama resLlama = impl.enviarPromptLlama(userId, dialogueId, tokenTratado, input.getPrompt());
+        
         if ("ACEPTADO".equals(resLlama.getEstado())) {
             
             URI location = uriInfo.getBaseUriBuilder()
-                                .path("u").path(userId)
-                                .path("dialogue").path(dialogueId)
-                                .queryParam("t", resLlama.getRespuesta())
-                                .build();
+                .path("u").path(userId)
+                .path("dialogue").path(dialogueId)
+                .queryParam("t", resLlama.getRespuesta())
+                .build();
 
             return Response.status(Response.Status.ACCEPTED)
                         .location(location)
                         .build();
         }
 
+        if ("TOKEN_INVALIDO".equals(resLlama.getEstado())) {
+            return Response.status(Response.Status.FORBIDDEN).build();
+        }
+
         if ("BUSY".equals(resLlama.getEstado())) {
            
             return Response.status(Response.Status.NO_CONTENT)
                         .build();
+        }
+        
+        if ("ERROR".equals(resLlama.getEstado())) {
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                   .build();
         }
 
         if ("FORMATO INVALIDO".equals(resLlama.getEstado())) {
@@ -79,34 +90,28 @@ public class ChatsEndpoint {
     }
 
     @GET
-    @Path("/dialogue/{dialogueId}")
+    @Path("/u/{userId}/dialogue/{dialogueId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response obtenerChat(@PathParam("username") String userId, @PathParam("dialogueId") String dialogueId, @QueryParam("t") String ticket) {
+    public Response consultarEstado(@PathParam("userId") String userId, @PathParam("dialogueId") String dialogueId, @QueryParam("t") String ticket) { 
 
-        ResultadoEnvioLlama resIA = impl.consultarRespuestaLlama(userId, ticket);
-        ChatDTO dto = new ChatDTO();
-        dto.setId(dialogueId);
-        String urlConsulta = "/u/" + userId + "/dialogue/" + dialogueId + "?t=" + ticket;
-        dto.setNextUrl(urlConsulta);
-
-        if ("READY".equals(resIA.getEstado())) {
-            dto.setStatus(ChatStatus.READY);
-            DialogueDTO lineaConversacion = new DialogueDTO();
-            lineaConversacion.setAnswer(resIA.getRespuesta()); 
-            lineaConversacion.setAnswerDate(new java.util.Date());
-            dto.addDialogue(lineaConversacion);
-        } 
-        else if ("BUSY".equals(resIA.getEstado())) {
-            dto.setStatus(ChatStatus.BUSY);
-        } 
-        else {
-            
-            dto.setStatus(ChatStatus.FINISHED);
+        if (ticket == null || ticket.isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("{\"error\":\"Falta el token de seguimiento\"}")
+                        .build();
         }
 
-        return Response.ok(dto).build();
-    }
+        // Llamamos a la lógica (Impl) para ver si gRPC tiene ya la respuesta
+        // Le pasamos todo lo necesario para que, si está listo, guarde en BD
+        ChatResponseDTO resultado = impl.obtenerResultadoLlama(userId, dialogueId, ticket);
 
+        if (resultado.isReady()) {
+            // 200 OK: Devolvemos el JSON tal cual la imagen
+            return Response.ok(resultado.getJsonData()).build();
+        } else {
+            // 202 ACCEPTED: Le decimos a Python "sigue preguntando"
+            return Response.status(Response.Status.ACCEPTED).build();
+        }
+    }
    
 
 }
