@@ -1,7 +1,10 @@
 package es.um.sisdist.backend.Service.impl;
 
 import java.util.ArrayList;
+<<<<<<< HEAD
 import java.util.HashMap;
+=======
+>>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -15,8 +18,11 @@ import es.um.sisdist.backend.grpc.PromptRequest;
 import es.um.sisdist.backend.grpc.TicketResponse;
 import es.um.sisdist.backend.grpc.TicketRequest;
 import es.um.sisdist.backend.grpc.PromptResponse;
+<<<<<<< HEAD
 import es.um.sisdist.models.ChatDTO;
 import es.um.sisdist.models.DialogueDTO;
+=======
+>>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
 import es.um.sisdist.models.ResultadoEnvioLlama;
 import es.um.sisdist.models.UserDTO;
 import es.um.sisdist.models.UserDTOUtils;
@@ -158,11 +164,15 @@ public class AppLogicImpl
     //////////////////////// CHATS /////////////////////
     public List<Chat> getChatList(){
         return new ArrayList<Chat>();
+<<<<<<< HEAD
 
+=======
+>>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
     }
 
     //Enviamos la solicitud para recibir un Token:
 
+<<<<<<< HEAD
     public ResultadoEnvioLlama enviarPromptLlama(String userId, String dialogueId, String token, String prompt) {
     
         Chat chat = chatDAO.findById(dialogueId);
@@ -187,6 +197,12 @@ public class AppLogicImpl
             chat.setNextToken(null);
             chatDAO.update(chat);
 
+=======
+    public ResultadoEnvioLlama enviarPromptLlama(String userId, String prompt) {
+    
+        try {
+        
+>>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
             PromptRequest request = PromptRequest.newBuilder()
                     .setIdUser(userId)
                     .setPromptRequest(prompt)
@@ -197,16 +213,24 @@ public class AppLogicImpl
             return new ResultadoEnvioLlama(tr.getStatus(), tr.getTicketResponse());
 
         } catch (Exception e) {
+<<<<<<< HEAD
             // Si cae lo mejor es no bloquearlo
             chat.setStatus(ChatStatus.READY);
             chatDAO.update(chat);
+=======
+            // Si gRPC falla o el servidor Python está caído
+>>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
             return new ResultadoEnvioLlama("ERROR", e.getMessage());
         }
     }
 
     // Consulta de token
 
+<<<<<<< HEAD
     public ChatDTO consultarRespuestaLlama(String userId, String dialogueId, String ticket) {
+=======
+    public ResultadoEnvioLlama consultarRespuestaLlama(String userId, String ticket) {
+>>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
         
         try {
             

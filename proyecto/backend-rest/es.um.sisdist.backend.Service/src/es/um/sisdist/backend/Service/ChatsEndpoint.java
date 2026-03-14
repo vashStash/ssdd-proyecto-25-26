@@ -58,7 +58,6 @@ public class ChatsEndpoint {
                 .path("dialogue").path(dialogueId)
                 .queryParam("t", resLlama.getRespuesta())
                 .build();
-
             return Response.status(Response.Status.ACCEPTED)
                         .location(location)
                         .build();
@@ -111,6 +110,34 @@ public class ChatsEndpoint {
             // 202 ACCEPTED: Le decimos a Python "sigue preguntando"
             return Response.status(Response.Status.ACCEPTED).build();
         }
+    }
+
+    @Path("/dialogue/{dialogueId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response obtenerChat(@PathParam("username") String userId, @PathParam("dialogueId") String dialogueId, @QueryParam("t") String ticket) {
+
+        ResultadoEnvioLlama resIA = impl.consultarRespuestaLlama(userId, ticket);
+        ChatDTO dto = new ChatDTO();
+        dto.setId(dialogueId);
+        String urlConsulta = "/u/" + userId + "/dialogue/" + dialogueId + "?t=" + ticket;
+        dto.setNextUrl(urlConsulta);
+
+        if ("READY".equals(resIA.getEstado())) {
+            dto.setStatus(ChatStatus.READY);
+            DialogueDTO lineaConversacion = new DialogueDTO();
+            lineaConversacion.setAnswer(resIA.getRespuesta()); 
+            lineaConversacion.setAnswerDate(new java.util.Date());
+            dto.addDialogue(lineaConversacion);
+        } 
+        else if ("BUSY".equals(resIA.getEstado())) {
+            dto.setStatus(ChatStatus.BUSY);
+        } 
+        else {
+            
+            dto.setStatus(ChatStatus.FINISHED);
+        }
+
+        return Response.ok(dto).build();
     }
    
 
