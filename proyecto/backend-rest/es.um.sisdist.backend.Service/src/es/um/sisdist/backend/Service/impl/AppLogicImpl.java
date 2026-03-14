@@ -1,5 +1,6 @@
 package es.um.sisdist.backend.Service.impl;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.lang.reflect.Array;
@@ -66,6 +67,8 @@ public class AppLogicImpl
         else
             dao = daoFactory.createSQLUserDAO();
             
+        chatDao = daoFactory.createMongoChatDao();
+
         chatDao = daoFactory.createMongoChatDao();
 
         var grpcServerName = Optional.ofNullable(System.getenv("GRPC_SERVER"));
