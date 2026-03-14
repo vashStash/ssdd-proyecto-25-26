@@ -2,30 +2,30 @@ package es.um.sisdist.models;
 
 import java.util.Date;
 
-import es.um.sisdist.backend.dao.models.Dialogue;
+import es.um.sisdist.backend.dao.models.Conversation;
 
-public class DialogueDTO {
-    private String dialogueId;
+public class ConversationDTO {
+    private String conversationId;
     private String prompt;
     private String answer;
     private Date creationDate;
     private Date answerDate;
 
     
-    public DialogueDTO(String dialogueId, String prompt, String answer, Date creationDate, Date answerDate) {
-        this.dialogueId = dialogueId;
+    public ConversationDTO(String conversationId, String prompt, String answer, Date creationDate, Date answerDate) {
+        this.conversationId = conversationId;
         this.prompt = prompt;
         this.answer = answer;
         this.creationDate = creationDate;
         this.answerDate = answerDate;
     }
     
-    public String getDialogueId() {
-        return dialogueId;
+    public String getConversationId() {
+        return conversationId;
     }
     
-    public void setDialogueId(String dialogueId) {
-        this.dialogueId = dialogueId;
+    public void setConversationId(String conversationId) {
+        this.conversationId = conversationId;
     }
     
     public String getPrompt() {
@@ -60,20 +60,20 @@ public class DialogueDTO {
         this.answerDate = answerDate;
     }
     
-    public static DialogueDTO toDTO(Dialogue dialog){
-        if (dialog == null) {
+    public static ConversationDTO toDTO(Conversation conver){
+        if (conver == null) {
             return null;
         }
-        return new DialogueDTO(dialog.getId(), dialog.getPrompt(), dialog.getAnswer(), dialog.getCreationDate(), dialog.getAnswerDate());
+        return new ConversationDTO(conver.getId(), conver.getPrompt(), conver.getAnswer(), conver.getCreationDate(), conver.getAnswerDate());
     }
 
     
     
     @Override
     public String toString() {
-        return "DialogueDTO [dialogueId=" + dialogueId + ", prompt=" + prompt + ", answer=" + answer + ", creationDate="
+        return "ConversationDTO [ConversationId=" + conversationId + ", prompt=" + prompt + ", answer=" + answer + ", creationDate="
                 + creationDate + ", answerDate=" + answerDate + "]";
     }
 
-    public DialogueDTO(){};
+    public ConversationDTO(){};
 }

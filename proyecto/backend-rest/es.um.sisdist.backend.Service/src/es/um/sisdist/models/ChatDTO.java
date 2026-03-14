@@ -16,7 +16,7 @@ public class ChatDTO {
     private String nextUrl;
     private ChatStatus status;
 
-    private List<DialogueDTO> conversation;
+    private List<ConversationDTO> conversation;
     
     public ChatDTO(String id, String name, String next, ChatStatus status){
         this.id = id;
@@ -65,11 +65,11 @@ public class ChatDTO {
         return new ChatDTO(chat.getId(), chat.getName(), chat.getNextToken(), chat.getStatus());
     }
 
-    public List<DialogueDTO> getconversation() {
+    public List<ConversationDTO> getconversation() {
         return conversation;
     }
 
-    public void addDialogue(DialogueDTO nuevo){
+    public void addConversation(ConversationDTO nuevo){
         this.conversation.add(nuevo);
     }
     

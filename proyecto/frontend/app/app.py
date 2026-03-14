@@ -30,6 +30,8 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    print('pinga')
+    logging.info('sepingaron')
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     else:
@@ -60,7 +62,7 @@ def login():
                 users.append(user)
                 login_user(user, remember=form.remember_me.data)
                 
-                return redirect(url_for('chats', userid=current_user.id))
+                return redirect(url_for('chats'))
 
             if r.status_code == 403:
                 error = 'Las credenciales no coinciden con ninguna cuenta.'
@@ -71,20 +73,15 @@ def login():
                 logging.info(form.email.data)
                 logging.info(form.password.data)
                 return render_template('login.html', form=form, error=error)
-            # if form.email.data != 'admin@um.es' or form.password.data != 'admin':
-            #     error = 'Invalid Credentials. Please try again.'
-            # else:
-            #     user = User(1, 'admin', form.email.data.encode('utf-8'),
-            #                 form.password.data.encode('utf-8'))
-            #     users.append(user)
-            #     login_user(user, remember=form.remember_me.data)
-            #     return redirect(url_for('index'))
 
         return render_template('login.html', form=form,  error=error)
 
 @app.route('/profile')
 @login_required
 def profile():
+    if not current_user.is_authenticated:
+        return render_template('index.html')
+
     return render_template('profile.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -158,7 +155,7 @@ def load_user(user_id):
 @login_required
 def chats(): 
 #def chats(userid, chatlist?):
-    userid = 'borrame'
+    userid = current_user.id
     query_url = f'http://backend-rest:8080/Service/u/{userid}/chat'
     try:
         r = requests.get(query_url)
@@ -169,8 +166,41 @@ def chats():
         print(f"Error al obtener los chats: {e}")
         chatlist_json = []
             
-    return render_template('chats.html')
+    return render_template('chats.html', userid=current_user.id)
     #return render_template('chats.html', userid=current_user.id ,chats=chatlist_json)
+
+@app.route('/chats/<userid>/nuevo-chat')
+def nuevo_chat():
+    chat_name = request.form.get('chat_name')
+    logging.info(chat_name)
+    # TODO: cambiar esto según el nombre del endpoint
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/nuevochat'
+    chat_data = { 'chatName' : chat_name }
+    r = requests.post(query_url, json=chat_data)
+
+    if r.status_code == 201:
+        # request para actualizar la lista de chats
+        chats_url = f'http://backend-rest:8080/Service/u/{userid}/chat'
+        try:
+            r_chats = requests.get(chats_url)
+            r_chats.raise_for_status()
+            chatlist_json = r_chats.json()
+        except requests.RequestException as e:
+            logging.error(f"Error al obtener los chats: {e}")
+            chatlist_json = []
+
+        #Busca el chat en la lista
+        chat_seleccionado = None
+        if chatlist_json:
+            for chat in chatlist_json:
+                if chat['name'] == chat_name:
+                    chat_seleccionado = chat
+                    break
+
+        return render_template('chats.html', userid=current_user.id, chat_seleccionado=chat_seleccionado, chats=chatlist_json)
+    else:
+        flash("Error al crear el chat. Inténtalo de nuevo.", "danger")
+        return redirect(url_for('chats'))
 
 
 if __name__ == '__main__':
