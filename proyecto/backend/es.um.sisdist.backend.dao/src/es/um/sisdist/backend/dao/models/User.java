@@ -137,6 +137,12 @@ public class User
         return chatList;
     }
     
+    public void addChat(String chatID){
+        
+        if (chatList == null) chatList = new java.util.ArrayList<>();
+        chatList.add(chatID);
+    }
+
     @Override
     public String toString()
     {

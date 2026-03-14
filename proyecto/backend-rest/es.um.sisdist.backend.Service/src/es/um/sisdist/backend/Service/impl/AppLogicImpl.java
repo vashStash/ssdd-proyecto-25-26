@@ -1,18 +1,23 @@
 package es.um.sisdist.backend.Service.impl;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
 import es.um.sisdist.backend.grpc.GrpcServiceGrpc;
 import es.um.sisdist.backend.grpc.PingRequest;
+import es.um.sisdist.models.ChatDTO;
 import es.um.sisdist.models.UserDTO;
 import es.um.sisdist.models.UserDTOUtils;
 import es.um.sisdist.backend.dao.DAOFactoryImpl;
 import es.um.sisdist.backend.dao.IDAOFactory;
+import es.um.sisdist.backend.dao.chats.IChatDAO;
 import es.um.sisdist.backend.dao.models.Chat;
 import es.um.sisdist.backend.dao.models.User;
+import es.um.sisdist.backend.dao.models.utils.ChatStatus;
 import es.um.sisdist.backend.dao.models.utils.UserUtils;
 import es.um.sisdist.backend.dao.user.IUserDAO;
 import io.grpc.ManagedChannel;
@@ -27,6 +32,8 @@ public class AppLogicImpl
 {
     IDAOFactory daoFactory;
     IUserDAO dao;
+    IChatDAO chatDao;
+    
 
     private static final Logger logger = Logger.getLogger(AppLogicImpl.class.getName());
 
@@ -45,6 +52,8 @@ public class AppLogicImpl
             dao = daoFactory.createMongoUserDAO();
         else
             dao = daoFactory.createSQLUserDAO();
+
+        chatDao = daoFactory.createMongoChatDao();
 
         var grpcServerName = Optional.ofNullable(System.getenv("GRPC_SERVER"));
         var grpcServerPort = Optional.ofNullable(System.getenv("GRPC_SERVER_PORT"));
@@ -138,7 +147,20 @@ public class AppLogicImpl
     }
 
     //////////////////////// CHATS /////////////////////
-    public List<Chat> getChatList(){
-        return new ArrayList<Chat>();
+    public List<ChatDTO> getChatList(String userid){
+        LinkedList<ChatDTO> chatlist = new LinkedList<ChatDTO>();
+        for (Chat chat: chatDao.getChatsByUserId(userid)) {
+            chatlist.add(new ChatDTO(chat.getId(), chat.getName(), chat.getNextToken(), chat.getStatus()));
+        }
+        return chatlist;
+    }
+
+    public String crearChat(String userid, String chatName){
+        Chat chat = new Chat(userid, chatName, ChatStatus.READY, null);
+        User user = dao.getUserById(userid).get();
+        chatDao.createChat(chat);        
+        user.addChat(chat.getId());
+        dao.updateUser(user);
+        return chat.getId();
     }
 }

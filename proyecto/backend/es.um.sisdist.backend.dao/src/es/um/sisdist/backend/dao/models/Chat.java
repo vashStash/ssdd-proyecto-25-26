@@ -19,7 +19,7 @@ public class Chat {
     private ChatStatus status; // READY, BUSY, FINISHED
     private String name; // no cambia, es el nombre de la conversación 
     
-    private List<Dialogue> conversation; // cambia, es la lista de diálogos de la conversación
+    private List<Conversation> conversation; // cambia, es la lista de diálogos de la conversación
     
     private Date creationDate; // no cambia, es la fecha de creación de la conversación
     private Date lastUpdateDate; // cambia, es la fecha de la última actualización de la conversación
@@ -27,7 +27,7 @@ public class Chat {
     private String nextToken; 
     private String endUrl; 
     
-    public Chat(String id, String user_id, String name, ChatStatus status, List<Dialogue> conversation) {
+    public Chat(String id, String user_id, String name, ChatStatus status, List<Conversation> conversation) {
         this.id = id;
         this.user_id = user_id;
         this.name = name;
@@ -40,7 +40,7 @@ public class Chat {
         this.nextToken = UUID.randomUUID().toString().replace("-", "").substring(0, 6);
     }
 
-    public Chat(String user_id, String name, ChatStatus status, List<Dialogue> conversation) {
+    public Chat(String user_id, String name, ChatStatus status, List<Conversation> conversation) {
         this(UUID.randomUUID().toString(), user_id, name, status, conversation);
     }
 
@@ -84,11 +84,11 @@ public class Chat {
         this.status = status;
     }
 
-    public List<Dialogue> getConversation() {
+    public List<Conversation> getConversation() {
         return conversation;
     }
     
-    public void setConversation(List<Dialogue> conversation) {
+    public void setConversation(List<Conversation> conversation) {
         this.conversation = conversation;
     }
     
@@ -122,8 +122,8 @@ public class Chat {
         return newToken;
     }
 
-    public void addDialogue(Dialogue dialogue){
-        this.conversation.add(dialogue);
+    public void addConversation(Conversation conversation){
+        this.conversation.add(conversation);
     }
     
     public String getEndUrl() {

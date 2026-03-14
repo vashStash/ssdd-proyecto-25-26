@@ -8,7 +8,7 @@ import org.bson.codecs.pojo.annotations.BsonProperty;
 
 import es.um.sisdist.backend.dao.models.utils.DateUtils;
 
-public class Dialogue {
+public class Conversation {
 
     @BsonId
     private String id;
@@ -24,9 +24,9 @@ public class Dialogue {
     private Date answerDate;
     
 
-    public Dialogue() {}
+    public Conversation() {}
 
-    public Dialogue(String id, String chat_id, String prompt, String answer, Date creationDate, Date ansDate){
+    public Conversation(String id, String chat_id, String prompt, String answer, Date creationDate, Date ansDate){
         this.id = id;
         this.chat_id = chat_id;
         this.prompt = prompt;
@@ -35,7 +35,7 @@ public class Dialogue {
         this.answerDate = ansDate;
     }
 
-    public Dialogue(String id, String chat_id, String prompt, String answer) {
+    public Conversation(String id, String chat_id, String prompt, String answer) {
         this(id, chat_id, prompt, answer, DateUtils.getCurrentDateISO(), null);
     }
 
@@ -118,7 +118,7 @@ public class Dialogue {
     
     @Override
     public String toString() {
-        return "Dialogue{" +
+        return "Conversation{" +
                 "id='" + id + '\'' +
                 ", chat_id='" + chat_id + '\'' +
                 ", prompt='" + prompt + '\'' +
