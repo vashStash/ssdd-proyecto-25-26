@@ -3,6 +3,8 @@
  */
 package es.um.sisdist.backend.dao;
 
+import es.um.sisdist.backend.dao.chats.IChatDAO;
+import es.um.sisdist.backend.dao.conversations.IConversationDAO;
 import es.um.sisdist.backend.dao.user.IUserDAO;
 
 /**
@@ -14,4 +16,9 @@ public interface IDAOFactory
     public IUserDAO createSQLUserDAO();
 
     public IUserDAO createMongoUserDAO();
+
+    public IChatDAO createMongoChatDao();
+
+    public IConversationDAO createMongoConversationDAO();
+
 }

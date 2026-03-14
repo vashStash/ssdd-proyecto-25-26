@@ -35,13 +35,13 @@ class Chat():
         self.name = name
         self.nextToken = nextToken
         self.status = status
-        self.dialogues = list
+        self.convers = list
 
     def __repr__(self):
         return '<Chat {}>'.format(self.name)
 
 
-class Dialogue():
+class Conversation():
 
     def __init__(self, id, prompt, answer, timestamp):
         self.id = id
@@ -50,5 +50,5 @@ class Dialogue():
         self.timestamp = timestamp
 
     def __repr__(self):
-        return '<Dialogue {}>'.format(self.prompt)
+        return '<Conversation {}>'.format(self.prompt)
     

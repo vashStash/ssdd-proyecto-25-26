@@ -2,6 +2,7 @@ package es.um.sisdist.backend.Service;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import es.um.sisdist.backend.Service.impl.AppLogicImpl;
@@ -10,8 +11,9 @@ import es.um.sisdist.backend.dao.models.utils.ChatStatus;
 import es.um.sisdist.backend.grpc.PromptResponse;
 import es.um.sisdist.backend.grpc.TicketResponse;
 import es.um.sisdist.models.ChatDTO;
-import es.um.sisdist.models.DialogueDTO;
+import es.um.sisdist.models.ConversationDTO;
 import es.um.sisdist.models.ResultadoEnvioLlama;
+import es.um.sisdist.backend.dao.models.User;
 import es.um.sisdist.models.UserDTO;
 import es.um.sisdist.models.UserDTOUtils;
 import jakarta.ws.rs.Consumes;
@@ -27,25 +29,59 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.core.Response.Status;
 
-@Path("/u/{username}")
+
+@Path("/u/{userid}")
 public class ChatsEndpoint {
     private AppLogicImpl impl = AppLogicImpl.getInstance();
 
     @GET
-    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/chats")
-    public Response getChatList(@PathParam("username") String username, UserDTO uo)
+    public Response getChatList(@PathParam("userid") String userid)
     {
-        
-        return Response.ok().build();
+        Optional<User> u = impl.getUserById(userid);
+
+        if(!u.isPresent()){
+            System.out.println("getChatList: Usuario no encontrado: " + userid);
+            return Response.status(Status.NOT_FOUND).build();
+        } else {
+            System.out.println("recuperando chats de: " + u.get().getName());
+        }
+
+        // recuperamos la lista de ids de los chats y devolvemos una respuesta
+        List<ChatDTO> chatlist = impl.getChatList(u.get().getId());
+        if (chatlist == null){
+            return Response.status(Status.NOT_FOUND).build();
+        }
+        return Response.ok(chatlist, MediaType.APPLICATION_JSON).build();
     }
 
     @POST
-    @Path("/u/{userId}/dialogue/{dialogueId}/next/{token : (.*)}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response enviarPrompt (@PathParam("userId") String userId, @PathParam("dialogueId") String dialogueId, @PathParam("token") String token, DialogueDTO input, @Context UriInfo uriInfo){
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/nuevochat")
+    public Response newChat(@PathParam("userid") String userid, String chatname)
+    {
+        Optional<User> u = impl.getUserById(userid);
+         if(!u.isPresent()){
+            System.out.println("getChatList: Usuario no encontrado: " + userid);
+            return Response.status(Status.NOT_FOUND).build();
+        } else {
+            System.out.println("creando nuevo chat para " + u.get().getName());
+        }
+
+        String chatID = impl.crearChat(userid, chatname);
+
+        if(chatID == null) return Response.status(Status.NOT_MODIFIED).build();
+        return Response.ok(chatID, MediaType.APPLICATION_JSON).build();
+    }
+
+    @POST
+    @Path("/dialogue/{dialogueId}/next/{token : (.*)}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response enviarPrompt (@PathParam("userid") String userId, @PathParam("dialogueId") String dialogueId, @PathParam("token") String token, ConversationDTO input, @Context UriInfo uriInfo){
 
         String tokenTratado = (token == null || token.isEmpty()) ? null : token;
 
@@ -89,9 +125,9 @@ public class ChatsEndpoint {
     }
 
     @GET
-    @Path("/u/{userId}/dialogue/{dialogueId}")
+    @Path("/dialogue/{dialogueId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response consultarEstado(@PathParam("userId") String userId, @PathParam("dialogueId") String dialogueId, @QueryParam("t") String ticket) { 
+    public Response consultarEstado(@PathParam("userid") String userId, @PathParam("dialogueId") String dialogueId, @QueryParam("t") String ticket) { 
 
         if (ticket == null || ticket.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -99,45 +135,20 @@ public class ChatsEndpoint {
                         .build();
         }
 
-        // Llamamos a la lógica (Impl) para ver si gRPC tiene ya la respuesta
-        // Le pasamos todo lo necesario para que, si está listo, guarde en BD
-        ChatResponseDTO resultado = impl.obtenerResultadoLlama(userId, dialogueId, ticket);
+        ChatDTO resultado = impl.consultarRespuestaLlama(userId, dialogueId, ticket);
 
-        if (resultado.isReady()) {
-            // 200 OK: Devolvemos el JSON tal cual la imagen
-            return Response.ok(resultado.getJsonData()).build();
+        if (resultado == null) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+
+        if (resultado.getStatus() == ChatStatus.READY) {
+        
+            return Response.ok(resultado).build();
+            
         } else {
-            // 202 ACCEPTED: Le decimos a Python "sigue preguntando"
+        
             return Response.status(Response.Status.ACCEPTED).build();
         }
-    }
-
-    @Path("/dialogue/{dialogueId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response obtenerChat(@PathParam("username") String userId, @PathParam("dialogueId") String dialogueId, @QueryParam("t") String ticket) {
-
-        ResultadoEnvioLlama resIA = impl.consultarRespuestaLlama(userId, ticket);
-        ChatDTO dto = new ChatDTO();
-        dto.setId(dialogueId);
-        String urlConsulta = "/u/" + userId + "/dialogue/" + dialogueId + "?t=" + ticket;
-        dto.setNextUrl(urlConsulta);
-
-        if ("READY".equals(resIA.getEstado())) {
-            dto.setStatus(ChatStatus.READY);
-            DialogueDTO lineaConversacion = new DialogueDTO();
-            lineaConversacion.setAnswer(resIA.getRespuesta()); 
-            lineaConversacion.setAnswerDate(new java.util.Date());
-            dto.addDialogue(lineaConversacion);
-        } 
-        else if ("BUSY".equals(resIA.getEstado())) {
-            dto.setStatus(ChatStatus.BUSY);
-        } 
-        else {
-            
-            dto.setStatus(ChatStatus.FINISHED);
-        }
-
-        return Response.ok(dto).build();
     }
    
 

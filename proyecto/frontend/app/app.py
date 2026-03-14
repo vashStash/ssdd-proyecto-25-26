@@ -32,6 +32,8 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    print('pinga')
+    logging.info('sepingaron')
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     else:
@@ -62,7 +64,7 @@ def login():
                 users.append(user)
                 login_user(user, remember=form.remember_me.data)
                 
-                return redirect(url_for('chats', userid=current_user.id))
+                return redirect(url_for('chats'))
 
             if r.status_code == 403:
                 error = 'Las credenciales no coinciden con ninguna cuenta.'
@@ -73,20 +75,15 @@ def login():
                 logging.info(form.email.data)
                 logging.info(form.password.data)
                 return render_template('login.html', form=form, error=error)
-            # if form.email.data != 'admin@um.es' or form.password.data != 'admin':
-            #     error = 'Invalid Credentials. Please try again.'
-            # else:
-            #     user = User(1, 'admin', form.email.data.encode('utf-8'),
-            #                 form.password.data.encode('utf-8'))
-            #     users.append(user)
-            #     login_user(user, remember=form.remember_me.data)
-            #     return redirect(url_for('index'))
 
         return render_template('login.html', form=form,  error=error)
 
 @app.route('/profile')
 @login_required
 def profile():
+    if not current_user.is_authenticated:
+        return render_template('index.html')
+
     return render_template('profile.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -156,24 +153,24 @@ def load_user(user_id):
             return user
     return None
 
-@app.route('/chats', methods=['GET', 'POST'])
-@login_required
-def chats():
-#def chats(userid, chatlist?):
-    userid = 'borrame'
-    query_url = f'http://backend-rest:8080/Service/u/{userid}/chat'
+def obtener_chats_usuario(userid):
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/chats'
     try:
         r = requests.get(query_url)
         r.raise_for_status()
-        chatlist_json = r.json()
-        
-    except requests.RequestException as e:
+        return r.json()
+    except Exception as e:
         print(f"Error al obtener los chats: {e}")
-        chatlist_json = []
-            
-    return render_template('chats.html')
-    #return render_template('chats.html', userid=current_user.id ,chats=chatlist_json)
+        return []
 
+
+@app.route('/chats', methods=['GET'])
+@login_required
+def chats():
+    userid = current_user.id
+    lista_chats = obtener_chats_usuario(userid)
+    return render_template('chats.html', chats=lista_chats, userid=userid)
+    
 @app.route('/next', methods=['POST'])
 @login_required
 def next():
@@ -183,16 +180,19 @@ def next():
 
     next_token = request.form.get('next_token', '').strip()
 
+    if not dialogueid or not user_prompt:
+        flash("Error: No se ha seleccionado un chat o el mensaje está vacío.")
+        return redirect(url_for('chats'))
+
     datos = {
         "prompt": user_prompt,
-        "timestamp": int(time.time()* 1000)
+        "creationDate": int(time.time()* 1000)
     }
 
     query_url = f'http://backend-rest:8080/Service/u/{userid}/dialogue/{dialogueid}/next/{next_token}'
 
     try:
         r = requests.post(query_url, json=datos, allow_redirects=False)
-        
         request_id = None
         if r.status_code in [201, 202]:    # ACCEPTED
             location_url = r.headers.get('Location')
@@ -203,22 +203,92 @@ def next():
             flash("La IA está ocupada procesando otro mensaje. Espera un momento.")
         elif r.status_code == 400:  # FORMATO INVALIDO
             flash("Error: Formato de mensaje inválido.")
- 
-      #  chats_del_usuario = obtener_chats_desde_java(userid) 
-      #  chat_actual = encontrar_chat_por_id(chats_del_usuario, dialogueid)
-
-        return render_template('chats.html', 
-                               chats=chats_del_usuario,
-                               chat_seleccionado=chat_actual,
-                               userid=userid,
-                               request_id=request_id)
 
     except Exception as e:
         print(f"Error en el flujo: {e}")
         return redirect(url_for('chats'))
+ 
+    chats_del_usuario = obtener_chats_usuario(userid)
+    chat_actual = next((c for c in chats_del_usuario if str(c.get('id')) == str(dialogueid)), None)
+
+    return render_template('chats.html', 
+                               chats=chats_del_usuario,
+                               chat_seleccionado=chat_actual,
+                               userid=userid,
+                               request_id=request_id)
     
+@app.route('/consultar_estado/<dialogueid>/<request_id>')
+@login_required
+def consultar_estado(dialogueid, request_id):
+    userid = current_user.id
+    
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/dialogue/{dialogueid}?t={request_id}'
+    
+    try:
+        r = requests.get(query_url)
+        
+        if r.status_code == 202:
+            return jsonify({"status": "BUSY"}), 200
+            
+        elif r.status_code == 200:
+            chat_dto = r.json() 
+            
+            conversations = chat_dto.get('conversation', [])
+            
+            if conversations:
+                ultima_conv = conversations[-1]
+                respuesta_texto = ultima_conv.get('answer', '')
+            else:
+                respuesta_texto = "Error: El historial de mensajes está vacío."
+
+            return jsonify({
+                "status": "READY",
+                "answer": respuesta_texto,
+                "next_token": chat_dto.get('nextUrl') # El nuevo token generado en Java
+            }), 200
+
+        elif r.status_code == 404:
+            return jsonify({"status": "ERROR", "message": "Chat no encontrado"}), 404
+        else:
+            return jsonify({"status": "ERROR", "message": "Fallo en el servidor Llama"}), 500
+
+    except Exception as e:
+        print(f"DEBUG: Error en polling de ticket {request_id}: {e}")
+        return jsonify({"status": "ERROR", "message": "Error de conexión"}), 500
 
 
+@app.route('/chats/<userid>/nuevo-chat')
+def nuevo_chat():
+    chat_name = request.form.get('chat_name')
+    logging.info(chat_name)
+    # TODO: cambiar esto según el nombre del endpoint
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/nuevochat'
+    chat_data = { 'chatName' : chat_name }
+    r = requests.post(query_url, json=chat_data)
+
+    if r.status_code == 201:
+        # request para actualizar la lista de chats
+        chats_url = f'http://backend-rest:8080/Service/u/{userid}/chats'
+        try:
+            r_chats = requests.get(chats_url)
+            r_chats.raise_for_status()
+            chatlist_json = r_chats.json()
+        except requests.RequestException as e:
+            logging.error(f"Error al obtener los chats: {e}")
+            chatlist_json = []
+
+        #Busca el chat en la lista
+        chat_seleccionado = None
+        if chatlist_json:
+            for chat in chatlist_json:
+                if chat['name'] == chat_name:
+                    chat_seleccionado = chat
+                    break
+
+        return render_template('chats.html', userid=current_user.id, chat_seleccionado=chat_seleccionado, chats=chatlist_json)
+    else:
+        flash("Error al crear el chat. Inténtalo de nuevo.", "danger")
+        return redirect(url_for('chats'))
 
 
 

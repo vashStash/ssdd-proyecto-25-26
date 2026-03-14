@@ -1,35 +1,32 @@
 package es.um.sisdist.backend.Service.impl;
 
 import java.util.ArrayList;
-<<<<<<< HEAD
 import java.util.HashMap;
-=======
->>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
+import java.lang.reflect.Array;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
-
 import es.um.sisdist.backend.grpc.GrpcServiceGrpc;
 import es.um.sisdist.backend.grpc.PingRequest;
 import es.um.sisdist.backend.grpc.PromptRequest;
 import es.um.sisdist.backend.grpc.TicketResponse;
 import es.um.sisdist.backend.grpc.TicketRequest;
 import es.um.sisdist.backend.grpc.PromptResponse;
-<<<<<<< HEAD
 import es.um.sisdist.models.ChatDTO;
-import es.um.sisdist.models.DialogueDTO;
-=======
->>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
+import es.um.sisdist.models.ConversationDTO;
 import es.um.sisdist.models.ResultadoEnvioLlama;
+import es.um.sisdist.models.ChatDTO;
 import es.um.sisdist.models.UserDTO;
 import es.um.sisdist.models.UserDTOUtils;
 import es.um.sisdist.backend.dao.DAOFactoryImpl;
 import es.um.sisdist.backend.dao.IDAOFactory;
+import es.um.sisdist.backend.dao.chats.IChatDAO;
 import es.um.sisdist.backend.dao.models.Chat;
-import es.um.sisdist.backend.dao.models.Dialogue;
+import es.um.sisdist.backend.dao.models.Conversation;
 import es.um.sisdist.backend.dao.models.User;
 import es.um.sisdist.backend.dao.models.utils.ChatStatus;
 import es.um.sisdist.backend.dao.models.utils.UserUtils;
@@ -49,8 +46,7 @@ public class AppLogicImpl
 {
     IDAOFactory daoFactory;
     IUserDAO dao;
-    // CHATS SIN BD
-    private Map<String, ChatDTO> mapChats = new ConcurrentHashMap<>();
+    IChatDAO chatDao;
 
     private static final Logger logger = Logger.getLogger(AppLogicImpl.class.getName());
 
@@ -69,6 +65,8 @@ public class AppLogicImpl
             dao = daoFactory.createMongoUserDAO();
         else
             dao = daoFactory.createSQLUserDAO();
+            
+        chatDao = daoFactory.createMongoChatDao();
 
         var grpcServerName = Optional.ofNullable(System.getenv("GRPC_SERVER"));
         var grpcServerPort = Optional.ofNullable(System.getenv("GRPC_SERVER_PORT"));
@@ -162,24 +160,18 @@ public class AppLogicImpl
     }
 
     //////////////////////// CHATS /////////////////////
-    public List<Chat> getChatList(){
-        return new ArrayList<Chat>();
-<<<<<<< HEAD
-
-=======
->>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
-    }
 
     //Enviamos la solicitud para recibir un Token:
 
-<<<<<<< HEAD
     public ResultadoEnvioLlama enviarPromptLlama(String userId, String dialogueId, String token, String prompt) {
     
-        Chat chat = chatDAO.findById(dialogueId);
+        Chat chat = chatDao.getChatById(dialogueId).orElse(null);
         
         if (chat == null) {
+
             return new ResultadoEnvioLlama("ERROR", "Chat no encontrado");
         }
+
 
         if (token != null && !token.equals(chat.getNextToken())) {
             return new ResultadoEnvioLlama("TOKEN_INVALIDO", null);
@@ -191,18 +183,11 @@ public class AppLogicImpl
 
         try {
         
-            Dialogue nuevoMensaje = new Dialogue(UUID.randomUUID().toString(), dialogueId, prompt, "");
-            chat.addDialogue(nuevoMensaje);
+            Conversation nuevoMensaje = new Conversation(UUID.randomUUID().toString(), dialogueId, prompt, "");
+            chat.addConversation(nuevoMensaje);
             chat.setStatus(ChatStatus.BUSY);
             chat.setNextToken(null);
-            chatDAO.update(chat);
-
-=======
-    public ResultadoEnvioLlama enviarPromptLlama(String userId, String prompt) {
-    
-        try {
-        
->>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
+            chatDao.updateChat(chat);
             PromptRequest request = PromptRequest.newBuilder()
                     .setIdUser(userId)
                     .setPromptRequest(prompt)
@@ -213,25 +198,15 @@ public class AppLogicImpl
             return new ResultadoEnvioLlama(tr.getStatus(), tr.getTicketResponse());
 
         } catch (Exception e) {
-<<<<<<< HEAD
             // Si cae lo mejor es no bloquearlo
             chat.setStatus(ChatStatus.READY);
-            chatDAO.update(chat);
-=======
-            // Si gRPC falla o el servidor Python está caído
->>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
+            chatDao.updateChat(chat);
+
             return new ResultadoEnvioLlama("ERROR", e.getMessage());
         }
     }
 
-    // Consulta de token
-
-<<<<<<< HEAD
-    public ChatDTO consultarRespuestaLlama(String userId, String dialogueId, String ticket) {
-=======
-    public ResultadoEnvioLlama consultarRespuestaLlama(String userId, String ticket) {
->>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
-        
+    public ChatDTO consultarRespuestaLlama(String userId, String dialogueId, String ticket) {      
         try {
             
             TicketRequest request = TicketRequest.newBuilder().setTicketRequest(ticket)
@@ -239,13 +214,52 @@ public class AppLogicImpl
 
             PromptResponse response = blockingStub.consultaTicket(request);
 
-            return new ResultadoEnvioLlama(response.getStatus(), response.getResponse());
+            Chat chat = chatDao.getChatById(dialogueId).orElse(null);
+            if (chat == null) return null;
+
+            if ("READY".equals(response.getStatus()) && chat.getStatus() == ChatStatus.BUSY) {
+                List<Conversation> convs = chat.getConversation();
+                if (!convs.isEmpty()) {
+                    Conversation ultima = convs.get(convs.size() - 1);
+                    ultima.setAnswer(response.getResponse());
+                    ultima.setAnswerDate(new java.util.Date());
+                    chat.setNextToken(UUID.randomUUID().toString());
+                    chat.setStatus(ChatStatus.READY);
+                    chatDao.updateChat(chat);
+                }
+            }
+
+            ChatDTO dto = ChatDTO.toDTO(chat);
+            if (chat.getConversation() != null) {
+                for (Conversation c : chat.getConversation()) {
+                    
+                dto.addConversation(ConversationDTO.toDTO(c));
+                }
+            }
+
+            return dto;
 
         } catch (Exception e) {
-            // Si gRPC falla o el servidor Python está caído
-            return new ResultadoEnvioLlama("ERROR_CONEXION", e.getMessage());
+            logger.severe("Error consultando ticket: " + e.getMessage());
+            return null;
         }
+    }       
 
+    public List<ChatDTO> getChatList(String userid){
+        LinkedList<ChatDTO> chatlist = new LinkedList<ChatDTO>();
+        for (Chat chat: chatDao.getChatsByUserId(userid)) {
+            chatlist.add(new ChatDTO(chat.getId(), chat.getName(), chat.getNextToken(), chat.getStatus()));
+        }
+        return chatlist;
+    }
+
+    public String crearChat(String userid, String chatName){
+        Chat chat = new Chat(userid, chatName, ChatStatus.READY, null);
+        User user = dao.getUserById(userid).get();
+        chatDao.createChat(chat);        
+        user.addChat(chat.getId());
+        dao.updateUser(user);
+        return chat.getId();
     }
 
 }

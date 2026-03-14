@@ -6,21 +6,18 @@
 
 {% block content %}
 <div class="dashboard-container">
-    <!-- Sidebar -->
     <div class="sidebar">
-
         <h2>Chats</h2>
-        <!-- aquí irán los chats. Se debe hacer una petición al REST para obtener la lista-->
         {% if chats %}
             <ul class="list-group">
                 {% for chat in chats %}
                     <li class="list-group-item p-0">
-                        {#<!--
-                            <a class="list-group-item list-group-item-action" href="{{ url_for('mostrar_chat', userid=userid, chatid=chat['id']) }}">
-                        -->#}
-                            <a class="list-group-item list-group-item-action" href="{{ url_for('chats') }}"></a>
-                            {{ chat['name'] or 'Chat sin nombre' }}
-                        </a>
+                        <form method="get" action="{{ url_for('chats') }}" style="display:inline;">
+                             <input type="hidden" name="dialogueid" value="{{ chat.id }}">
+                             <button type="submit" class="list-group-item list-group-item-action border-0">
+                                 {{ chat.name or 'Chat sin nombre' }}
+                             </button>
+                        </form>
                     </li>
                 {% endfor %}
             </ul>
@@ -28,143 +25,127 @@
             <p>No hay chats disponibles.</p>
         {% endif %}
         <br>
-        <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#chatModal">+</button>
-
-        {#<!-- <form method="post" action="{{ url_for('nuevo_dialogue') }}"> 
-        <button type="submit" class="btn"> + </button>
-        </form> -->#}
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#chatModal"> + Nuevo Chat </button>
     </div>
 
-    
-    {% if chat_seleccionado %}
-    <!-- Mostrar el historial del chat -->
-        <div class="main-content">
-            
-            Caja de mensajes 
+    <div class="main-content">
+        {% if chat_seleccionado %}
+            <div class="chat-header">
+                <h3>{{ chat_seleccionado.name }}</h3>
+            </div>
+
             <div class="chat-box" id="chatBox">
-            {% if chat_seleccionado.conversation and chat_seleccionado.conversation|length > 0 %}
-                {% for mensaje in chat_seleccionado.conversation %}
-                    <div class="message user-message">{{ mensaje.prompt }}</div>
-                    <div class="message bot-message">{{ mensaje.answer }}</div>
-                {% endfor %}
-            {% else %}
-                <div class="message bot-message">¡Hola! ¿En qué puedo ayudarte?</div>
-            {% endif %}
+                {% if chat_seleccionado.conversation and chat_seleccionado.conversation|length > 0 %}
+                    {% for mensaje in chat_seleccionado.conversation %}
+                        <div class="message user-message">
+                            <strong>Tú:</strong><br>
+                            {{ mensaje.prompt }}
+                        </div>
+                        {% if mensaje.answer %}
+                        <div class="message bot-message">
+                            <strong>Llama:</strong><br>
+                            {{ mensaje.answer }}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="message bot-message">¡Hola! Soy Llama. ¿En qué puedo ayudarte hoy?</div>
+                {% endif %}
             </div>
 
-            <!-- Caja de texto para enviar nuevos mensajes 
-            Esto habrá que modificarlo con la función para enviar mensaje de app.py-->
-            <form method="post" action="{{ url_for('next') }}">
-    
-        <input type="hidden" name="dialogueid" value="{{ chat_seleccionado.id }}">
-        
-        <input type="hidden" name="nextToken" value="{{ chat_seleccionado['nextUrl'] }}">
-        
-        {% if chat_seleccionado.status == "READY" %}
-        <div class="input-group mt-3">
-            <input type="text" name="prompt" class="form-control" placeholder="Escribe tu mensaje...">
-            <button type="submit" class="btn btn-primary">Enviar</button>
-        </div>
-        {% endif %}
-        </form>
-    </form>
-        </div>
-        <!--- Script para hacer polling al servidor, una vez se ha enviado una prompt -->
-        <script>
-        function esperarRespuesta(requestId, userId, dialogueId) {
-            console.log("requestId: ", requestId)
-            const intervalId = setInterval(() => {
-                fetch(`http://localhost:8080/u/${userId}/dialogue/${dialogueId}?t=${requestId}`)
+            <form method="post" action="{{ url_for('next') }}" id="sendForm">
+                <input type="hidden" name="dialogueid" value="{{ chat_seleccionado.id }}">
+                <input type="hidden" name="next_token" id="next_token_input" value="{{ chat_seleccionado.nextUrl }}">
+                
+                <div class="input-group mt-3">
+                    <input type="text" name="prompt" id="promptInput" class="form-control" placeholder="Escribe tu mensaje..." required 
+                           {% if chat_seleccionado.status != 'READY' %} disabled {% endif %}>
+                    <button type="submit" class="btn btn-primary" id="sendButton" 
+                            {% if chat_seleccionado.status != 'READY' %} disabled {% endif %}>
+                        Enviar
+                    </button>
+                </div>
+            </form>
 
-                    .then(res =>{
-                        console.log("respuesta recibida del checkPrimpt: ", res.status)
-                        if (res.status === 204) {
-                            // todavía no se ha generado la solicitud
-                            return null;
-                        }
-                        return res.json();
-                    })
-                    .then(data => {
-                        if (!data) return;  // nada que hacer si no hay datos
+            {% if request_id %}
+                <div id="pollingAlert" class="alert alert-info mt-3" role="alert">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    Llama está pensando... por favor espera.
+                </div>
 
-                        console.log("Datos recibidos del backend:", data);
-
-                        if (data.status === 'READY') {
-                            clearInterval(intervalId); /*
-                            const chatBox = document.getElementById('chatBox');
-                            const respuesta = document.createElement('div');
-                            respuesta.className = "mensaje respuesta";
-                            respuesta.textContent = data.answer;
-                            chatBox.appendChild(respuesta);
-                            fetch('http://localhost:5010/{{ userid }}/chats')
-                            */
-                            location.reload();
-                        }
-<<<<<<< HEAD
-                        else if (data.status === 'BUSY') {
-=======
-                        else if (data.status == 'BUSY') {
->>>>>>> bcee22c6274b404ae4b7db721c33675dfd558b45
-                            console.log("Llama sigue escribiendo...");
-                        }
-                        else if (data.status === 'error' || data.status == 'FINISHED') {
-                            clearInterval(intervalId);
-                            alert("Chat finalizado o ha ocurrido un error al obtener la respuesta: " + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error al hacer polling:", error);
+                <script>
+                    
+                    document.addEventListener("DOMContentLoaded", function() {
+                        esperarRespuesta("{{ request_id }}", "{{ chat_seleccionado.id }}");
                     });
-            }, 3000);
-        }
-        </script>
-        <!-- Desde aquí se llama al script más abajo para hacer polling al servidor y obtener la respuesta -->
-        {% if request_id %}
-            <div class="alert alert-info mt-3" role="alert">
-                Esperando respuesta del servidor...
-            </div>
-            <script>
-                esperarRespuesta("{{ request_id }}", "{{ userid }}", "{{ chat_seleccionado.id }}");
-            </script>
-        {% endif %}
-        {% if busy_chat %}
-            <div class="alert alert-info mt-3" role="alert">
-                El servidor todavía está procesando la respuesta anterior...
-            </div>
-        {% endif %}
+                </script>
+            {% endif %}
+
         {% else %}
-        <!-- Si no hay chat seleccionado -->
-        <div class="text-center mt-5 neutral-text">
-            <p class="neutral-text">Selecciona un chat de la lista o crea uno nuevo para comenzar.</p>
-            
-            <!-- Botón que abre el modal para nuevo chat -->
-            <button type="button" class="btn button" data-bs-toggle="modal" data-bs-target="#chatModal"> Nuevo Chat </button>
-        </div> 
+            <div class="text-center mt-5 neutral-text">
+                <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
+                <p class="mt-3">Selecciona un chat de la lista o crea uno nuevo para comenzar la conversación.</p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#chatModal"> 
+                    Crear mi primer chat 
+                </button>
+            </div> 
         {% endif %}
-   
-        
+    </div>
 </div>
 
-
-<!--- Ventana modal que aparece al crear un nuevho chat con alguno de los botones -->
 <div class="modal fade" id="chatModal" tabindex="-1" aria-labelledby="chatModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form method="post" action="{{ url_for('chats', userid=current_user.id) }}">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="chatModalLabel">Nuevo chat</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <form method="post" action="{{ url_for('nuevo_chat', userid=userid) }}">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="chatModalLabel">Crear Nuevo Chat</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="chat_name" class="form-label">Nombre del Chat</label>
+                        <input type="text" name="chat_name" class="form-control" id="chat_name" placeholder="Ej. Tarea de Historia" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Chat</button>
+                </div>
             </div>
-            <div class="modal-body">
-                <input type="text" name="chat_name" class="form-control" placeholder="Nombre del chat" required>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-primary">Crear</button>
-            </div>
-        </div>
         </form>
     </div>
 </div>
 
+<script>
+function esperarRespuesta(requestId, dialogueId) {
+    console.log("Iniciando polling para ticket: ", requestId);
+    
+    const intervalId = setInterval(() => {
+        fetch(`/consultar_estado/${dialogueId}/${requestId}`)
+            .then(res => {
+                if (!res.ok) throw new Error("Error en la respuesta del servidor");
+                return res.json();
+            })
+            .then(data => {
+                console.log("Estado recibido:", data.status);
+
+                if (data.status === 'READY') {
+                
+                    clearInterval(intervalId);
+                    location.reload();
+                } 
+                else if (data.status === 'ERROR') {
+                    clearInterval(intervalId);
+                    alert("Error de la IA: " + (data.message || "Desconocido"));
+                    location.reload();
+                }
+                
+            })
+            .catch(error => {
+                console.error("Error al hacer polling:", error);
+            });
+    }, 2000); // Consultar cada 2 segundos
+}
+</script>
 
 {% endblock %}
