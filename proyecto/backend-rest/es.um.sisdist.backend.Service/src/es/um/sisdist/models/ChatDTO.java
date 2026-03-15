@@ -80,5 +80,7 @@ public class ChatDTO {
                 + conversation + "]";
     }
 
-    public ChatDTO(){};
+    public ChatDTO(){
+        this.conversation = new LinkedList<>();
+    }
 }

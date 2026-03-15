@@ -2,13 +2,24 @@ package es.um.sisdist.backend.Service.impl;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.lang.reflect.Array;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
-
 import es.um.sisdist.backend.grpc.GrpcServiceGrpc;
 import es.um.sisdist.backend.grpc.PingRequest;
+import es.um.sisdist.backend.grpc.PromptRequest;
+import es.um.sisdist.backend.grpc.TicketResponse;
+import es.um.sisdist.backend.grpc.TicketRequest;
+import es.um.sisdist.backend.grpc.PromptResponse;
+import es.um.sisdist.models.ChatDTO;
+import es.um.sisdist.models.ConversationDTO;
+import es.um.sisdist.models.ResultadoEnvioLlama;
 import es.um.sisdist.models.ChatDTO;
 import es.um.sisdist.models.UserDTO;
 import es.um.sisdist.models.UserDTOUtils;
@@ -16,12 +27,16 @@ import es.um.sisdist.backend.dao.DAOFactoryImpl;
 import es.um.sisdist.backend.dao.IDAOFactory;
 import es.um.sisdist.backend.dao.chats.IChatDAO;
 import es.um.sisdist.backend.dao.models.Chat;
+import es.um.sisdist.backend.dao.models.Conversation;
 import es.um.sisdist.backend.dao.models.User;
 import es.um.sisdist.backend.dao.models.utils.ChatStatus;
 import es.um.sisdist.backend.dao.models.utils.UserUtils;
 import es.um.sisdist.backend.dao.user.IUserDAO;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.InternalServerErrorException;
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Response;
 
 /**
@@ -33,7 +48,6 @@ public class AppLogicImpl
     IDAOFactory daoFactory;
     IUserDAO dao;
     IChatDAO chatDao;
-    
 
     private static final Logger logger = Logger.getLogger(AppLogicImpl.class.getName());
 
@@ -52,6 +66,10 @@ public class AppLogicImpl
             dao = daoFactory.createMongoUserDAO();
         else
             dao = daoFactory.createSQLUserDAO();
+            
+        chatDao = daoFactory.createMongoChatDao();
+
+        chatDao = daoFactory.createMongoChatDao();
 
         chatDao = daoFactory.createMongoChatDao();
 
@@ -65,6 +83,7 @@ public class AppLogicImpl
                 .usePlaintext().build();
         blockingStub = GrpcServiceGrpc.newBlockingStub(channel);
         //asyncStub = GrpcServiceGrpc.newStub(channel);
+        
     }
 
     public static AppLogicImpl getInstance()
@@ -101,7 +120,6 @@ public class AppLogicImpl
     public Optional<User> checkLogin(String email, String pass)
     {
         Optional<User> u = dao.getUserByEmail(email);
-
 
         if (u.isPresent())
         {
@@ -147,6 +165,7 @@ public class AppLogicImpl
     }
 
     //////////////////////// CHATS /////////////////////
+    
     public List<ChatDTO> getChatList(String userid){
         LinkedList<ChatDTO> chatlist = new LinkedList<ChatDTO>();
         for (Chat chat: chatDao.getChatsByUserId(userid)) {
@@ -163,4 +182,93 @@ public class AppLogicImpl
         dao.updateUser(user);
         return chat.getId();
     }
+
+    /////////////////////// PROMPTS //////////////////////
+
+    //Enviamos la solicitud para recibir un Token:
+
+    public ResultadoEnvioLlama enviarPromptLlama(String userId, String dialogueId, String token, String prompt) {
+    
+        Chat chat = chatDao.getChatById(dialogueId).orElse(null);
+        
+        if (chat == null) {
+
+            return new ResultadoEnvioLlama("ERROR", "Chat no encontrado");
+        }
+
+
+        if (token != null && !token.equals(chat.getNextToken())) {
+            return new ResultadoEnvioLlama("TOKEN_INVALIDO", null);
+        }
+
+        if (chat.getStatus() == ChatStatus.BUSY) {
+            return new ResultadoEnvioLlama("BUSY", null);
+        }
+
+        try {
+        
+            Conversation nuevoMensaje = new Conversation(UUID.randomUUID().toString(), dialogueId, prompt, "");
+            chat.addConversation(nuevoMensaje);
+            chat.setStatus(ChatStatus.BUSY);
+            chat.setNextToken(null);
+            chatDao.updateChat(chat);
+            PromptRequest request = PromptRequest.newBuilder()
+                    .setIdUser(userId)
+                    .setPromptRequest(prompt)
+                    .build();
+
+            TicketResponse tr = blockingStub.preguntarLlama(request);
+
+            return new ResultadoEnvioLlama(tr.getStatus(), tr.getTicketResponse());
+
+        } catch (Exception e) {
+            // Si cae lo mejor es no bloquearlo
+            chat.setStatus(ChatStatus.READY);
+            chatDao.updateChat(chat);
+
+            return new ResultadoEnvioLlama("ERROR", e.getMessage());
+        }
+    }
+
+    public ChatDTO consultarRespuestaLlama(String userId, String dialogueId, String ticket) {      
+        try {
+            
+            TicketRequest request = TicketRequest.newBuilder().setTicketRequest(ticket)
+                    .build();
+
+            PromptResponse response = blockingStub.consultaTicket(request);
+
+            Chat chat = chatDao.getChatById(dialogueId).orElse(null);
+            if (chat == null) return null;
+
+            if ("READY".equals(response.getStatus()) && chat.getStatus() == ChatStatus.BUSY) {
+                List<Conversation> convs = chat.getConversation();
+                if (!convs.isEmpty()) {
+                    Conversation ultima = convs.get(convs.size() - 1);
+                    ultima.setAnswer(response.getResponse());
+                    ultima.setAnswerDate(new java.util.Date());
+                    chat.setNextToken(UUID.randomUUID().toString());
+                    chat.setStatus(ChatStatus.READY);
+                    chatDao.updateChat(chat);
+                }
+            }
+
+            ChatDTO dto = ChatDTO.toDTO(chat);
+            if (chat.getConversation() != null) {
+                for (Conversation c : chat.getConversation()) {
+                    
+                dto.addConversation(ConversationDTO.toDTO(c));
+                }
+            }
+
+            return dto;
+
+        } catch (Exception e) {
+            logger.severe("Error consultando ticket: " + e.getMessage());
+            return null;
+        }
+    }       
+
+    
+
 }
