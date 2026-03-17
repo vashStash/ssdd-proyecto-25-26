@@ -147,7 +147,7 @@ public class User
     public String toString()
     {
         return "User [id=" + id + ", email=" + email + ", password_hash=" + password_hash + ", name=" + name
-                + ", TOKEN=" + token + ", visits=" + visits + "]";
+                + ", TOKEN=" + token + ", visits=" + visits + "chats=" + chatList.toString() + "]";
     }
 
     public User()

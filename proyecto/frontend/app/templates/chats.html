@@ -12,7 +12,7 @@
             <ul class="list-group">
                 {% for chat in chats %}
                     <li class="list-group-item p-0">
-                        <form method="get" action="{{ url_for('chats') }}" style="display:inline;">
+                        <form method="get" action="{{ url_for('mostrar_chat', userid=userid, chatid=chat.id) }}" style="display:inline;">
                              <input type="hidden" name="dialogueid" value="{{ chat.id }}">
                              <button type="submit" class="list-group-item list-group-item-action border-0">
                                  {{ chat.name or 'Chat sin nombre' }}
@@ -92,30 +92,30 @@
         {% endif %}
     </div>
 </div>
-{#
+
+
 <div class="modal fade" id="chatModal" tabindex="-1" aria-labelledby="chatModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form method="post" action="{{ url_for('nuevo_chat', userid=userid) }}">
+        <form method="post" action="{{ url_for('nuevochat', userid=current_user.id) }}">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="chatModalLabel">Crear Nuevo Chat</h5>
+                    <h5 class="modal-title" id="chatModalLabel">Nuevo chat</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
+                
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="chat_name" class="form-label">Nombre del Chat</label>
-                        <input type="text" name="chat_name" class="form-control" id="chat_name" placeholder="Ej. Tarea de Historia" required>
-                    </div>
+                    <input type="text" name="chat_name" class="form-control" placeholder="Nombre del chat" required>
                 </div>
+                
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Crear Chat</button>
+                    <button type="submit" class="btn btn-primary">Crear</button>
                 </div>
             </div>
         </form>
     </div>
 </div>
 
+{#
 <script>
 function esperarRespuesta(requestId, dialogueId) {
     console.log("Iniciando polling para ticket: ", requestId);
@@ -147,5 +147,5 @@ function esperarRespuesta(requestId, dialogueId) {
     }, 2000); // Consultar cada 2 segundos
 }
 </script>
-
+#}
 {% endblock %}

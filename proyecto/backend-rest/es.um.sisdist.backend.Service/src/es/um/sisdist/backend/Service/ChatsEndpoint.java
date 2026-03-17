@@ -5,8 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import javax.print.attribute.standard.Media;
+
 import es.um.sisdist.backend.Service.impl.AppLogicImpl;
 import es.um.sisdist.backend.dao.models.Chat;
+import es.um.sisdist.backend.dao.models.Conversation;
 import es.um.sisdist.backend.dao.models.utils.ChatStatus;
 import es.um.sisdist.backend.grpc.PromptResponse;
 import es.um.sisdist.backend.grpc.TicketResponse;
@@ -37,7 +40,7 @@ public class ChatsEndpoint {
     private AppLogicImpl impl = AppLogicImpl.getInstance();
 
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
     @Path("/chats")
     public Response getChatList(@PathParam("userid") String userid)
     {
@@ -55,6 +58,7 @@ public class ChatsEndpoint {
         if (chatlist == null){
             return Response.status(Status.NOT_FOUND).build();
         }
+        System.out.println("se devolverá " + chatlist.toString());
         return Response.ok(chatlist, MediaType.APPLICATION_JSON).build();
     }
 
@@ -77,6 +81,28 @@ public class ChatsEndpoint {
         if(chatID == null) return Response.status(Status.NOT_MODIFIED).build();
         return Response.ok(chatID, MediaType.APPLICATION_JSON).build();
     }
+
+    @GET
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/chat/{chatid}")
+    public Response getChat(@PathParam("userid") String userid, @PathParam("chatid") String chatid){
+      
+        Optional<Chat> chat = impl.getChat(userid, chatid);
+        System.out.println("Recibida petición de chat: " + chat.get());
+
+        if (chat.isEmpty()) {
+            return Response.status(Status.NOT_FOUND).build();
+        } else {
+            System.out.println("devolviendo chat: " + chat.get().toString());
+            ChatDTO chatDTO = ChatDTO.toDTO(chat.get());
+            for (Conversation conversation : chat.get().getConversation()) {
+                chatDTO.addConversation(ConversationDTO.toDTO(conversation));
+            }
+            return Response.ok(chatDTO, MediaType.APPLICATION_JSON).build();
+        }
+    }
+
 
     @POST
     @Path("/dialogue/{dialogueId}/next/{token : (.*)}")

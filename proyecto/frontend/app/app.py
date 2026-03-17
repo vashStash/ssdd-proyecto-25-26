@@ -1,5 +1,4 @@
-from datetime import time
-
+import time
 from flask import Flask, render_template, send_from_directory, url_for, jsonify, request, redirect, flash
 from flask_login import LoginManager, login_manager, current_user, login_user, login_required, logout_user
 import requests
@@ -32,8 +31,6 @@ def index():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    print('pinga')
-    logging.info('sepingaron')
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     else:
@@ -63,7 +60,7 @@ def login():
                 
                 users.append(user)
                 login_user(user, remember=form.remember_me.data)
-                
+                print('entrando a la función chats')
                 return redirect(url_for('chats'))
 
             if r.status_code == 403:
@@ -156,21 +153,63 @@ def load_user(user_id):
 @app.route('/chats', methods=['GET', 'POST'])
 @login_required
 def chats(): 
-#def chats(userid, chatlist?):
+    print("entramos en chats")
     userid = current_user.id
     query_url = f'http://backend-rest:8080/Service/u/{userid}/chats'
+    print('entrando en el try')
     try:
+        print('hacemos la petición')
         r = requests.get(query_url)
         r.raise_for_status()
-        return render_template('chats.html', chats=lista_chats, userid=userid)
+        print("lista de chats recibida del backend:")
+        print(r.raw)
+        print(r.json())
+        lista_chats = r.json()
+        current_user.chatlist = lista_chats
+        print('rendering chats.html')
+        return render_template('chats.html', userid=userid, chats=lista_chats)
     
     except Exception as e:
         print(f"Error al obtener los chats: {e}")
         return []
     
+@app.route('/u/<userid>/chats/<chatid>', methods=['GET'])
+@login_required
+def mostrar_chat(userid, chatid):
+    print('hola mostrando chat')
+    # Obtener la lista de chats
+    # TODO investigar como almacenar la lista de chats en current_user
+    chats_url = f'http://backend-rest:8080/Service/u/{userid}/chats'
+    r_chats = requests.get(chats_url)
+    chatlist_json = r_chats.json() if r_chats.ok else []
+    print('hecha query a get all chats')
+
+    # Buscar el chat concreto
+    chat_url = f'http://backend-rest:8080/Service/u/{userid}/chat/{chatid}'
+    r_chat = requests.get(chat_url)
+    print('printing la respuesta del chat especifico')
+    r_chat.raise_for_status
+    print(r_chat.headers)
+    print(r_chat.content)
+    chat_seleccionado = r_chat.json() if r_chat.ok else None
+
+    logging.info(chat_seleccionado)
+
+    if not chat_seleccionado:
+    # si el chat devuelto es null, muestra un error
+        logging.error(f"Chat con ID {chatid} no encontrado para el usuario {userid}.")
+        flash("Chat no encontrado.", "danger")
+        return redirect(url_for('chats', userid=userid))
+
+    # Si todo va bien, renderiza el template chats.html
+    return render_template('chats.html', userid=userid,
+        chats=chatlist_json, chat_seleccionado=chat_seleccionado
+    )
+    
 @app.route('/next', methods=['POST'])
 @login_required
 def next():
+
     dialogueid = request.form.get('dialogueid')
     user_prompt = request.form.get('prompt')
     userid = current_user.id
@@ -205,70 +244,74 @@ def next():
         print(f"Error en el flujo: {e}")
         return redirect(url_for('chats'))
  
-    chats_del_usuario = obtener_chats_usuario(userid)
-    chat_actual = next((c for c in chats_del_usuario if str(c.get('id')) == str(dialogueid)), None)
-
     return render_template('chats.html', 
-                               chats=chats_del_usuario,
+                               chats=current_user,
                                chat_seleccionado=chat_actual,
                                userid=userid,
                                request_id=request_id)
     
-@app.route('/consultar_estado/<dialogueid>/<request_id>')
-@login_required
-def consultar_estado(dialogueid, request_id):
-    userid = current_user.id
+# @app.route('/consultar_estado/<dialogueid>/<request_id>')
+# @login_required
+# def consultar_estado(dialogueid, request_id):
+#     userid = current_user.id
     
-    query_url = f'http://backend-rest:8080/Service/u/{userid}/dialogue/{dialogueid}?t={request_id}'
+#     query_url = f'http://backend-rest:8080/Service/u/{userid}/dialogue/{dialogueid}?t={request_id}'
     
-    try:
-        r = requests.get(query_url)
+#     try:
+#         r = requests.get(query_url)
         
-        if r.status_code == 202:
-            return jsonify({"status": "BUSY"}), 200
+#         if r.status_code == 202:
+#             return jsonify({"status": "BUSY"}), 200
             
-        elif r.status_code == 200:
-            chat_dto = r.json() 
+#         elif r.status_code == 200:
+#             chat_dto = r.json() 
             
-            conversations = chat_dto.get('conversation', [])
+#             conversations = chat_dto.get('conversation', [])
             
-            if conversations:
-                ultima_conv = conversations[-1]
-                respuesta_texto = ultima_conv.get('answer', '')
-            else:
-                respuesta_texto = "Error: El historial de mensajes está vacío."
+#             if conversations:
+#                 ultima_conv = conversations[-1]
+#                 respuesta_texto = ultima_conv.get('answer', '')
+#             else:
+#                 respuesta_texto = "Error: El historial de mensajes está vacío."
 
-            return jsonify({
-                "status": "READY",
-                "answer": respuesta_texto,
-                "next_token": chat_dto.get('nextUrl') # El nuevo token generado en Java
-            }), 200
+#             return jsonify({
+#                 "status": "READY",
+#                 "answer": respuesta_texto,
+#                 "next_token": chat_dto.get('nextUrl') # El nuevo token generado en Java
+#             }), 200
 
-        elif r.status_code == 404:
-            return jsonify({"status": "ERROR", "message": "Chat no encontrado"}), 404
-        else:
-            return jsonify({"status": "ERROR", "message": "Fallo en el servidor Llama"}), 500
+#         elif r.status_code == 404:
+#             return jsonify({"status": "ERROR", "message": "Chat no encontrado"}), 404
+#         else:
+#             return jsonify({"status": "ERROR", "message": "Fallo en el servidor Llama"}), 500
 
-    except Exception as e:
-        print(f"DEBUG: Error en polling de ticket {request_id}: {e}")
-        return jsonify({"status": "ERROR", "message": "Error de conexión"}), 500
+#     except Exception as e:
+#         print(f"DEBUG: Error en polling de ticket {request_id}: {e}")
+#         return jsonify({"status": "ERROR", "message": "Error de conexión"}), 500
 
-@app.route('/chats/<userid>/nuevo-chat')
-def nuevo_chat():
+@app.route('/chats/u/nuevochat', methods=['GET','POST'])
+@login_required
+def nuevochat():
+    print("entrando en nuevochat")
     chat_name = request.form.get('chat_name')
-    logging.info(chat_name)
+    # logging.info(chat_name)
     # TODO: cambiar esto según el nombre del endpoint
+    userid = current_user.id
     query_url = f'http://backend-rest:8080/Service/u/{userid}/nuevochat'
-    chat_data = { 'chatName' : chat_name }
-    r = requests.post(query_url, json=chat_data)
+    chat_data = chat_name
+    r = requests.post(query_url, chat_data)
 
-    if r.status_code == 201:
+    # que me devuvea el created
+    if r.status_code == 200:
         # request para actualizar la lista de chats
-        chats_url = f'http://backend-rest:8080/Service/u/{userid}/chat'
+        chats_url = f'http://backend-rest:8080/Service/u/{userid}/chats'
+        print('Empieza el print')
         try:
             r_chats = requests.get(chats_url)
             r_chats.raise_for_status()
             chatlist_json = r_chats.json()
+            print(chatlist_json)
+
         except requests.RequestException as e:
             logging.error(f"Error al obtener los chats: {e}")
             chatlist_json = []
@@ -277,41 +320,9 @@ def nuevo_chat():
         chat_seleccionado = None
         if chatlist_json:
             for chat in chatlist_json:
+                print(chat['name'])
                 if chat['name'] == chat_name:
-                    chat_seleccionado = chat
-                    break
-
-        return render_template('chats.html', userid=current_user.id, chat_seleccionado=chat_seleccionado, chats=chatlist_json)
-    else:
-        flash("Error al crear el chat. Inténtalo de nuevo.", "danger")
-        return redirect(url_for('chats'))
-
-@app.route('/chats/<userid>/nuevo-chat')
-def nuevo_chat():
-    chat_name = request.form.get('chat_name')
-    logging.info(chat_name)
-    # TODO: cambiar esto según el nombre del endpoint
-    query_url = f'http://backend-rest:8080/Service/u/{userid}/nuevochat'
-    chat_data = { 'chatName' : chat_name }
-    r = requests.post(query_url, json=chat_data)
-
-    if r.status_code == 201:
-        # request para actualizar la lista de chats
-        chats_url = f'http://backend-rest:8080/Service/u/{userid}/chat'
-        try:
-            r_chats = requests.get(chats_url)
-            r_chats.raise_for_status()
-            chatlist_json = r_chats.json()
-        except requests.RequestException as e:
-            logging.error(f"Error al obtener los chats: {e}")
-            chatlist_json = []
-
-        #Busca el chat en la lista
-        chat_seleccionado = None
-        if chatlist_json:
-            for chat in chatlist_json:
-                if chat['name'] == chat_name:
-                    chat_seleccionado = chat
+                    chat_seleccionado = chat    
                     break
 
         return render_template('chats.html', userid=current_user.id, chat_seleccionado=chat_seleccionado, chats=chatlist_json)

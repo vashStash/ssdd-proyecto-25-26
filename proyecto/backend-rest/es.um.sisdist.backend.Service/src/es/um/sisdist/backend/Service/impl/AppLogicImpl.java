@@ -1,5 +1,6 @@
 package es.um.sisdist.backend.Service.impl;
 
+import java.lang.StackWalker.Option;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -182,6 +183,24 @@ public class AppLogicImpl
         dao.updateUser(user);
         return chat.getId();
     }
+
+    public Optional<Chat> getChat(String userid, String chatid){
+        
+        Optional<Chat> hola = chatDao.getChatById(chatid);
+        System.out.println(hola.toString());
+        Optional<User> user = dao.getUserById(userid);
+        System.out.println("Se muestra info de usuario");
+        System.out.println(user.get().toString());
+
+        if(!hola.isPresent() 
+            || !user.isPresent() 
+            || !user.get().getChatList().contains(hola.get().getId())){
+                return Optional.empty();
+            }
+
+        return hola;
+    }
+
 
     /////////////////////// PROMPTS //////////////////////
 
