@@ -3,6 +3,7 @@
  */
 package es.um.sisdist.backend.dao.models;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import es.um.sisdist.backend.dao.models.utils.UserUtils;
@@ -118,18 +119,19 @@ public class User
     }
 
     public User(String email, String password_hash, String name, String tOKEN, int visits)
-    {
-        this(email, email, password_hash, name, tOKEN, visits);
+    {       
+        this(email, email, password_hash, name, tOKEN, visits, new ArrayList<String>());
         this.id = UserUtils.md5pass(email);
     }
 
-    public User(String id, String email, String password_hash, String name, String tOKEN, int visits)
+    public User(String id, String email, String password_hash, String name, String tOKEN, int visits, ArrayList<String> chatlist)
     {
         this.id = id;
         this.email = email;
         this.password_hash = password_hash;
         this.name = name;
         token = tOKEN;
+        this.chatList = chatlist;
         this.visits = visits;
     }
 

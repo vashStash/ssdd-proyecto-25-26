@@ -11,6 +11,7 @@ public class UserDTO
     private String password;
 
     private String token;
+    private String chatlist;
 
     private int visits;
 
@@ -102,6 +103,14 @@ public class UserDTO
         return visits;
     }
 
+     /**
+     * @return a string of the chatIds separated by the "?" character
+     */
+    public String getChatlistIDs()
+    {
+        return chatlist;
+    }
+
     /**
      * @param visits the visits to set
      */
@@ -110,7 +119,7 @@ public class UserDTO
         this.visits = visits;
     }
 
-    public UserDTO(String id, String email, String password, String name, String tOKEN, int visits)
+    public UserDTO(String id, String email, String password, String name, String tOKEN, int visits, String chatlist)
     {
         super();
         this.id = id;
@@ -119,12 +128,13 @@ public class UserDTO
         this.name = name;
         token = tOKEN;
         this.visits = visits;
+        this.chatlist = chatlist;
     }
 
     @Override
     public String toString() {
         return "UserDTO [id=" + id + ", email=" + email + ", password=" + password + ", name=" + name + ", token="
-                + token + ", visits=" + visits + "]";
+                + token + ", visits=" + visits + "chatlist=" + chatlist + "]";
     }
 
     public UserDTO()
