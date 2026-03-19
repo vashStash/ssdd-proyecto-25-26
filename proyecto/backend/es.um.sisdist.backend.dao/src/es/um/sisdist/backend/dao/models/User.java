@@ -17,6 +17,8 @@ public class User
 
     private String token;
 
+    private String singleChat;
+
     //una lista de referencias a los ids de los chats
     private List<String> chatList;
 
@@ -118,21 +120,21 @@ public class User
         this.visits = visits;
     }
 
-    public User(String email, String password_hash, String name, String tOKEN, int visits)
-    {       
-        this(email, email, password_hash, name, tOKEN, visits, new ArrayList<String>());
+    public User(String email, String password_hash, String name, String tOKEN, int visits, String singlechat)
+    {   
+        this(email, email, password_hash, name, tOKEN, visits, singlechat);
         this.id = UserUtils.md5pass(email);
     }
 
-    public User(String id, String email, String password_hash, String name, String tOKEN, int visits, ArrayList<String> chatlist)
+    public User(String id, String email, String password_hash, String name, String tOKEN, int visits, String singleChat)
     {
         this.id = id;
         this.email = email;
         this.password_hash = password_hash;
         this.name = name;
         token = tOKEN;
-        this.chatList = chatlist;
         this.visits = visits;
+        this.singleChat = singleChat;
     }
 
     public List<String> getChatList(){
@@ -145,11 +147,15 @@ public class User
         chatList.add(chatID);
     }
 
+    public String getSingleChat(){
+        return this.singleChat;
+    }
+
     @Override
     public String toString()
     {
         return "User [id=" + id + ", email=" + email + ", password_hash=" + password_hash + ", name=" + name
-                + ", TOKEN=" + token + ", visits=" + visits + "chats=" + chatList.toString() + "]";
+                + ", TOKEN=" + token + ", visits=" + visits + "chats=" + "]";
     }
 
     public User()

@@ -114,7 +114,7 @@ def register():
                     logging.info('usuario registrado con id ' + str(user_id))
 
                     users.append(user)
-                    return redirect(url_for('login'))
+                    return render_template(url_for('login', success=True()))
                 if r.status_code == 409: 
                     error = 'Error: El usuario ya existe.'
                     flash(error)
@@ -167,7 +167,7 @@ def chats():
         lista_chats = r.json()
         current_user.chatlist = lista_chats
         print('rendering chats.html')
-        return render_template('chats.html', userid=userid, chats=lista_chats)
+        return render_template('chats.html', userid=userid)
     
     except Exception as e:
         print(f"Error al obtener los chats: {e}")
@@ -176,35 +176,40 @@ def chats():
 @app.route('/u/<userid>/chats/<chatid>', methods=['GET'])
 @login_required
 def mostrar_chat(userid, chatid):
+    #1 hacer query para obtener el chat
+    #2 enviarlo al html tal cual con su lista de mensajes que va a ser más complicao
+    
     print('hola mostrando chat')
     # Obtener la lista de chats
     # TODO investigar como almacenar la lista de chats en current_user
     chats_url = f'http://backend-rest:8080/Service/u/{userid}/chats'
     r_chats = requests.get(chats_url)
-    chatlist_json = r_chats.json() if r_chats.ok else []
+    unicochat = Chat( r_chats.json()) if r_chats.ok else []
     print('hecha query a get all chats')
 
     # Buscar el chat concreto
-    chat_url = f'http://backend-rest:8080/Service/u/{userid}/chat/{chatid}'
+    chat_url = f'http://backend-rest:8080/Service/u/{userid}/chat/{chat.id}'
     r_chat = requests.get(chat_url)
     print('printing la respuesta del chat especifico')
-    r_chat.raise_for_status
     print(r_chat.headers)
     print(r_chat.content)
     chat_seleccionado = r_chat.json() if r_chat.ok else None
 
     logging.info(chat_seleccionado)
 
-    if not chat_seleccionado:
-    # si el chat devuelto es null, muestra un error
-        logging.error(f"Chat con ID {chatid} no encontrado para el usuario {userid}.")
-        flash("Chat no encontrado.", "danger")
-        return redirect(url_for('chats', userid=userid))
+    if r_chat.status_code==201 or r_chat.status_code==204
+        return render_template('chats.html', userid=userid,
+        chats=r_chat.json(), chat_seleccionado=chat_seleccionado
+    # if not chat_seleccionado:
+    # # si el chat devuelto es null, muestra un error
+    #     logging.error(f"Chat con ID {chatid} no encontrado para el usuario {userid}.")
+    #     flash("Chat no encontrado.", "danger")
+    #     return redirect(url_for('chats', userid=userid))
 
-    # Si todo va bien, renderiza el template chats.html
-    return render_template('chats.html', userid=userid,
-        chats=chatlist_json, chat_seleccionado=chat_seleccionado
-    )
+    # # Si todo va bien, renderiza el template chats.html
+    # return render_template('chats.html', userid=userid,
+    #     chats=chatlist_json, chat_seleccionado=chat_seleccionado
+    # )
     
 @app.route('/next', methods=['POST'])
 @login_required

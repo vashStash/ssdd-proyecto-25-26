@@ -15,6 +15,8 @@ public class UserDTO
 
     private int visits;
 
+    private String singleChat;
+
     /**
      * @return the id
      */
@@ -119,7 +121,11 @@ public class UserDTO
         this.visits = visits;
     }
 
-    public UserDTO(String id, String email, String password, String name, String tOKEN, int visits, String chatlist)
+    public String getSingleChat(){
+        return this.singleChat;
+    }
+
+    public UserDTO(String id, String email, String password, String name, String tOKEN, int visits, String singleChat)
     {
         super();
         this.id = id;
@@ -128,7 +134,8 @@ public class UserDTO
         this.name = name;
         token = tOKEN;
         this.visits = visits;
-        this.chatlist = chatlist;
+        // this.chatlist = chatlist;
+        this.singleChat = singleChat;
     }
 
     @Override

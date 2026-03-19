@@ -288,6 +288,22 @@ public class AppLogicImpl
         }
     }       
 
-    
+    public ChatDTO getSingleChat(String userid){
+
+        User user = dao.getUserById(userid).get();
+        if (user == null){
+            System.out.println("no se ha encontrado el usuario en applogic getsinglechat");
+            return null;
+        }
+
+        Optional<Chat> singlechatOpt = chatDao.getChatById(user.getSingleChat()
+
+        if (!singlechatOpt.isPresent()){
+            System.out.println("no se ha encontrado el singleChat en applogic getsinglechat");
+            return null;
+        }
+
+        return ChatDTO.toDTO(singlechatOpt.get());
+    }
 
 }

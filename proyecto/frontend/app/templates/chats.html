@@ -5,6 +5,7 @@
 {% endblock %}
 
 {% block content %}
+{#
 <div class="dashboard-container">
     <div class="sidebar">
         <h2>Chats</h2>
@@ -27,73 +28,53 @@
         <br>
         <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#chatModal"> + Nuevo Chat </button>
     </div>
+#}
+    <di<div class="main-content">
 
-    <div class="main-content">
-        {% if chat_seleccionado %}
-            <div class="chat-header">
-                <h3>{{ chat_seleccionado.name }}</h3>
-            </div>
+    <div class="chat-box" id="chat-box">
+        {{url_for('mostrar_chat')}}
+        {% if mensajes %}
+            {% for mensaje in mensajes %}
 
-            <div class="chat-box" id="chatBox">
-                {% if chat_seleccionado.conversation and chat_seleccionado.conversation|length > 0 %}
-                    {% for mensaje in chat_seleccionado.conversation %}
-                        <div class="message user-message">
-                            <strong>Tú:</strong><br>
-                            {{ mensaje.prompt }}
-                        </div>
-                        {% if mensaje.answer %}
-                        <div class="message bot-message">
-                            <strong>Llama:</strong><br>
-                            {{ mensaje.answer }}
-                        </div>
-                        {% endif %}
-                    {% endfor %}
+                {% if mensaje.role == "user" %}
+                    <div class="message user-message">
+                        {{ mensaje.content }}
+                    </div>
                 {% else %}
-                    <div class="message bot-message">¡Hola! Soy Llama. ¿En qué puedo ayudarte hoy?</div>
+                    <div class="message bot-message">
+                        {{ mensaje.content }}
+                    </div>
                 {% endif %}
-            </div>
 
-            <form method="post" action="{{ url_for('next') }}" id="sendForm">
-                <input type="hidden" name="dialogueid" value="{{ chat_seleccionado.id }}">
-                <input type="hidden" name="next_token" id="next_token_input" value="{{ chat_seleccionado.nextUrl }}">
-                
-                <div class="input-group mt-3">
-                    <input type="text" name="prompt" id="promptInput" class="form-control" placeholder="Escribe tu mensaje..." required 
-                           {% if chat_seleccionado.status != 'READY' %} disabled {% endif %}>
-                    <button type="submit" class="btn btn-primary" id="sendButton" 
-                            {% if chat_seleccionado.status != 'READY' %} disabled {% endif %}>
-                        Enviar
-                    </button>
-                </div>
-            </form>
-
-            {% if request_id %}
-                <div id="pollingAlert" class="alert alert-info mt-3" role="alert">
-                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    Llama está pensando... por favor espera.
-                </div>
-
-                <script>
-                    
-                    document.addEventListener("DOMContentLoaded", function() {
-                        esperarRespuesta("{{ request_id }}", "{{ chat_seleccionado.id }}");
-                    });
-                </script>
-            {% endif %}
-
+            {% endfor %}
         {% else %}
-            <div class="text-center mt-5 neutral-text">
-                <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
-                <p class="mt-3">Selecciona un chat de la lista o crea uno nuevo para comenzar la conversación.</p>
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#chatModal"> 
-                    Crear mi primer chat 
-                </button>
-            </div> 
+            <div class="message bot-message">
+                ¡Hola! ¿En qué puedo ayudarte?
+            </div>
         {% endif %}
+
     </div>
+
+    
+    <form method="post" action="{{ url_for('enviar_prompt') }}">
+        <div class="chat-input">
+
+            <textarea 
+                name="mensaje" 
+                placeholder="Escribe tu mensaje..." 
+                rows="2"
+                required
+            ></textarea>
+
+            <button type="submit">Enviar</button>
+
+        </div>
+    </form>
+
 </div>
+{#</div>#}
 
-
+{#
 <div class="modal fade" id="chatModal" tabindex="-1" aria-labelledby="chatModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <form method="post" action="{{ url_for('nuevochat', userid=current_user.id) }}">
@@ -114,6 +95,7 @@
         </form>
     </div>
 </div>
+#}
 
 {#
 <script>

@@ -54,12 +54,14 @@ public class ChatsEndpoint {
         }
 
         // recuperamos la lista de ids de los chats y devolvemos una respuesta
-        List<ChatDTO> chatlist = impl.getChatList(u.get().getId());
-        if (chatlist == null){
-            return Response.status(Status.NOT_FOUND).build();
+        // List<ChatDTO> chatlist = impl.getChatList(u.get().getId());
+        ChatDTO chat = impl.getSingleChat(u.get().getId());
+        if (chat == null){
+            return Response.status(Status.NO_CONTENT).build();
         }
-        System.out.println("se devolverá " + chatlist.toString());
-        return Response.ok(chatlist, MediaType.APPLICATION_JSON).build();
+
+        System.out.println("se encontro el singlechat " + chat.toString());
+        return Response.ok(chat, MediaType.APPLICATION_JSON).build();
     }
 
     @POST

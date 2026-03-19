@@ -6,6 +6,15 @@
 {% endblock %}
 
 {% block content %}
+{% if success %}
+|<main class="h3">
+  <p>Enhorabuena, tu cuenta se ha creado con éxito</p>
+  <br>
+  <a href="{{ url_for('login') }}" class="btn btn-primary">
+    Ir a login
+  </a>
+</main>
+{% else %}
 <main class="form-signin">
   <form method="POST">
     {{ form.hidden_tag() }}
@@ -32,4 +41,5 @@
   <p class="error"><strong>Error:</strong> {{ error }}</p>
   {% endif %}
 </main>
+{% endif %}
 {% endblock %}

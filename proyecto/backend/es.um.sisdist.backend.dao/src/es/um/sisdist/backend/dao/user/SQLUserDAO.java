@@ -84,7 +84,8 @@ public class SQLUserDAO implements IUserDAO
                     result.getString(3), // pwhash
                     result.getString(4), // name
                     result.getString(5), // token
-                    result.getInt(6))); // visits
+                    result.getInt(6), // visits
+                    result.getString(7))); //singlechat -- borrar
         } catch (SQLException e)
         {
             return Optional.empty();
