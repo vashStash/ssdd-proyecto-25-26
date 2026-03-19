@@ -3,6 +3,7 @@
  */
 package es.um.sisdist.backend.dao.models;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import es.um.sisdist.backend.dao.models.utils.UserUtils;
@@ -17,7 +18,7 @@ public class User
     private String token;
 
     //una lista de referencias a los ids de los chats
-    private List<String> chatList;
+    private List<Chat> chatList;
 
     private int visits;
 
@@ -131,16 +132,21 @@ public class User
         this.name = name;
         token = tOKEN;
         this.visits = visits;
+        this.chatList = new LinkedList<>();
     }
 
-    public List<String> getChatList(){
+    public List<Chat> getChatList(){
         return chatList;
     }
+
+    public void setChatList(List<Chat> chats){
+        this.chatList = chats;
+    }
     
-    public void addChat(String chatID){
+    public void addChat(Chat chat){
         
         if (chatList == null) chatList = new java.util.ArrayList<>();
-        chatList.add(chatID);
+        chatList.add(chat);
     }
 
     @Override

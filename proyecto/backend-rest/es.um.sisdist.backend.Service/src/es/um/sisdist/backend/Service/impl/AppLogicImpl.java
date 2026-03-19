@@ -124,6 +124,12 @@ public class AppLogicImpl
 
         if (u.isPresent())
         {
+            List<Chat> chatUser = chatDao.getChatsByUserId(u.get().getId());
+            if (chatUser == null) {
+                chatUser = new LinkedList<Chat>();
+            }
+            u.get().setChatList(chatUser);
+
             System.out.println("applogic: usuario recuperado" + u.get().toString());
             String hashed_pass = UserUtils.md5pass(pass);
             System.out.println("Contraseña recibida (hashed): " + hashed_pass + " \nContraseña almacenada: " + u.get().getPassword_hash());
@@ -179,7 +185,7 @@ public class AppLogicImpl
         Chat chat = new Chat(userid, chatName, ChatStatus.READY, null);
         User user = dao.getUserById(userid).get();
         chatDao.createChat(chat);        
-        user.addChat(chat.getId());
+        user.addChat(chat);
         dao.updateUser(user);
         return chat.getId();
     }
