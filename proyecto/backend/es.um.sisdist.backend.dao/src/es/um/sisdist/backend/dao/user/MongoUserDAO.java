@@ -1,6 +1,3 @@
-/**
- *
- */
 package es.um.sisdist.backend.dao.user;
 
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
@@ -26,6 +23,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertOneResult;
+import com.mongodb.client.result.UpdateResult;
 
 import es.um.sisdist.backend.dao.models.User;
 
@@ -61,6 +59,8 @@ public class MongoUserDAO implements IUserDAO
     public Optional<User> getUserById(String id)
     {
         Optional<User> user = Optional.ofNullable(collection.find(eq("id", id)).first());
+        if(user.isPresent()) System.out.println("recuperando user desdel dao: " + user.get().toString());
+        else System.out.println("se ha rallao el dao user");
         return user;
     }
 
@@ -104,8 +104,17 @@ public class MongoUserDAO implements IUserDAO
 
     @Override
     public boolean addNewChat(String userId, String chatId) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'addNewChat'");
+         try {
+            System.out.println("Creando chat " + chatId + " para user " + userId);
+            UpdateResult res = collection.updateOne(
+                eq("id", userId),
+                com.mongodb.client.model.Updates.addToSet("chatList", chatId)
+            );
+            return res.getModifiedCount() > 0;
+        } catch (MongoException e) {
+            logger.log(Level.SEVERE, "Error adding new chat to user", e);
+            return false;
+        }
     }
 
     @Override
@@ -121,8 +130,16 @@ public class MongoUserDAO implements IUserDAO
 
     @Override
     public boolean updateUser(User updatedUser) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'updateUser'");
+        try {
+            UpdateResult result = collection.replaceOne(
+                eq("id", updatedUser.getId()), 
+                updatedUser
+            );
+            return result.getModifiedCount() > 0;
+        } catch (MongoException e) {
+            logger.log(Level.SEVERE, "Error updating user", e);
+            return false;
+        }
     }
 
 }

@@ -1,121 +1,155 @@
-/* Sidebar */
+/* Quita márgenes por defecto */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+/* Contenedor global que incluye sidebar y main-content */
+.dashboard-container {
+    display: flex;
+    /* Ajusta la parte superior si tu navbar ocupa 50px */
+    /* margin-top: 50px; */
+    /* Altura total de la pantalla menos la navbar */
+    height: calc(100vh - 100px);
+}
+
+/* Sidebar fijo */
 .sidebar {
     width: 250px;
-    height: 100vh;
-    background-color: #f5f5f5;
-    border-right: 1px solid #ddd;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.sidebar-button {
-    padding: 10px 15px;
-    background-color: #007bff;
+    background: #343a40;
     color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: background-color 0.3s;
-}
-
-.sidebar-button:hover {
-    background-color: #0056b3;
-}
-
-.sidebar-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    flex: 1;
-    overflow-y: auto;
-}
-
-.sidebar-list-item {
-    padding: 10px;
-    margin-bottom: 8px;
-    background-color: white;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    border: 1px solid #e0e0e0;
-}
-
-.sidebar-list-item:hover {
-    background-color: #e8f4f8;
-}
-
-/* Messages Container */
-.messages-container {
-    flex: 1;
-    overflow-y: auto;
     padding: 20px;
-    background-color: #ffffff;
+    /* Fijo al top, para no scrollear con el contenido */
+    position: fixed;
+    top: 50px; 
+    left: 0;
+    /* Asegura que ocupe el resto de la pantalla */
+    height: calc(100vh - 50px);
+    overflow-y: auto;
+}
+
+/* .sidebar a{
+    color: rgb(226, 226, 226);
+    padding: 10px;
+    border-radius: 5px;
+} */
+
+.list-group-item-action {
+  background-color: #2c6886;
+  color: #fff;
+  border-color: #2c6886;
+}
+
+/* .list-group-item-action:hover {
+  background-color: #1e7e34;
+} */
+
+.sidebar a:hover {
+    background: #f89946;
+}
+
+.sidebar button{
+    width: 100% ;
+    background-color: #f89946;
+    border-radius: 5px;
+}
+
+/* Zona principal (chat) a la derecha */
+.main-content {
+    /* establece el tamaño del contenido */
+    margin-left: 250px;
+    height: calc(100vh - 50px);
+    width: 100vw;
+    /* width: calc(100vw - 100px); */
+    /* Flex para que el chat-box crezca y el input quede abajo */
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    border-radius: 8px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Caja de mensajes */
+.chat-box {
+    flex: 1; /* Ocupará todo el espacio disponible */
     border: 1px solid #ddd;
+    border-radius: 10px;
+    background: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
 }
 
+/* Mensajes */
 .message {
-    padding: 12px 15px;
-    border-radius: 8px;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 10px;
     max-width: 70%;
-    word-wrap: break-word;
 }
 
-.message.sent {
-    background-color: #007bff;
+/* Mensaje del usuario */
+.user-message {
+    background: #007bff;
     color: white;
     align-self: flex-end;
 }
 
-.message.received {
-    background-color: #f0f0f0;
-    color: #333;
+/* Mensaje del bot */
+.bot-message {
+    background: #e9ecef;
+    color: black;
     align-self: flex-start;
 }
 
-/* Input Box */
-.input-box {
+/* Caja de input abajo del todo */
+.chat-input {
     display: flex;
-    gap: 10px;
-    padding: 15px;
-    background-color: #f9f9f9;
-    border-top: 1px solid #ddd;
-    border-radius: 8px;
+    margin-top: 10px; /* Separación con el chat-box */
 }
 
-.input-box input {
-    flex: 1;
-    padding: 10px 15px;
+.chat-input textarea {
+    flex: 1; /* Ocupar todo el ancho posible */
+    resize: none; /* Evitar que se cambie el tamaño manual */
+    padding: 10px;
     border: 1px solid #ddd;
     border-radius: 5px;
-    font-size: 14px;
-    resize: none;
-}
-
-.input-box input:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+    font-family: inherit;
+    font-size: 18px;
 }
 
-.input-box button {
-    padding: 10px 20px;
-    background-color: #007bff;
-    color: white;
+.chat-input button {
+    margin-left: 10px;
+    background: #f89946;
+    color: #fff;
     border: none;
     border-radius: 5px;
+    padding: 10px 20px;
     cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.3s;
 }
 
-.input-box button:hover {
-    background-color: #0056b3;
+.chat-input button:hover {
+    background: #e4832d;
+}
+
+.neutral-text{
+    color: #464b4e;
+    align-self: center;
+    padding-left: 250px;
+}
+
+.neutral-text button{
+    background-color: #f89946;
+    color: white;
+    border: none;
+    align-self: left;
+    border-radius: 5px;
+    cursor: pointer;
+    width: fit-content;
+}
+.neutral-text button:hover {
+    background-color: #ec8327;
 }
