@@ -107,11 +107,11 @@ public class ChatsEndpoint {
     @Path("/dialogue/{dialogueId}/next/{token : (.*)}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response enviarPrompt (@PathParam("userid") String userId, @PathParam("dialogueId") String dialogueId, @PathParam("token") String token, ConversationDTO input, @Context UriInfo uriInfo){
-
+        System.out.println("Entra para pedir al token");
         String tokenTratado = (token == null || token.isEmpty()) ? null : token;
 
         ResultadoEnvioLlama resLlama = impl.enviarPromptLlama(userId, dialogueId, tokenTratado, input.getPrompt());
-        
+        System.out.println("Vuelve de la llamada a grpc");
         if ("ACEPTADO".equals(resLlama.getEstado())) {
             
             URI location = uriInfo.getBaseUriBuilder()
@@ -119,6 +119,8 @@ public class ChatsEndpoint {
                 .path("dialogue").path(dialogueId)
                 .queryParam("t", resLlama.getRespuesta())
                 .build();
+                System.out.println("Este es el token recibido " + resLlama.getRespuesta());
+
             return Response.status(Response.Status.ACCEPTED)
                         .location(location)
                         .build();
@@ -153,7 +155,7 @@ public class ChatsEndpoint {
     @Path("/dialogue/{dialogueId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response consultarEstado(@PathParam("userid") String userId, @PathParam("dialogueId") String dialogueId, @QueryParam("t") String ticket) { 
-
+        System.out.println("Lo consulta de verdad el token");
         if (ticket == null || ticket.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
                         .entity("{\"error\":\"Falta el token de seguimiento\"}")

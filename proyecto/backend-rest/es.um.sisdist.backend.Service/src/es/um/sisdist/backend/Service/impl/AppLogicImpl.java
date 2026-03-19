@@ -221,10 +221,10 @@ public class AppLogicImpl
     //Enviamos la solicitud para recibir un Token:
 
     public ResultadoEnvioLlama enviarPromptLlama(String userId, String dialogueId, String token, String prompt) {
-    
+        
         Chat chat = chatDao.getChatById(dialogueId).orElse(null);
         
-        if (chat == null) {
+        if (chat == null || !chat.getUser_id().equals(userId)) {
 
             return new ResultadoEnvioLlama("ERROR", "Chat no encontrado");
         }
@@ -241,6 +241,7 @@ public class AppLogicImpl
         try {
         
             Conversation nuevoMensaje = new Conversation(UUID.randomUUID().toString(), dialogueId, prompt, "");
+            nuevoMensaje.setCreationDate(new java.util.Date());
             chat.addConversation(nuevoMensaje);
             chat.setStatus(ChatStatus.BUSY);
             chat.setNextToken(null);
@@ -263,16 +264,18 @@ public class AppLogicImpl
         }
     }
 
-    public ChatDTO consultarRespuestaLlama(String userId, String dialogueId, String ticket) {      
+    public ChatDTO consultarRespuestaLlama(String userId, String dialogueId, String ticket) {
+        
+        Chat chat = chatDao.getChatById(dialogueId).orElse(null);
+        if (chat == null) return null;
+        System.out.println("Otra vez toca reinicio?");
+        String ticketLimpio = (ticket != null) ? ticket.replace("]", "").replace("[", "").trim() : "";
         try {
             
-            TicketRequest request = TicketRequest.newBuilder().setTicketRequest(ticket)
+            TicketRequest request = TicketRequest.newBuilder().setTicketRequest(ticketLimpio)
                     .build();
 
             PromptResponse response = blockingStub.consultaTicket(request);
-
-            Chat chat = chatDao.getChatById(dialogueId).orElse(null);
-            if (chat == null) return null;
 
             if ("READY".equals(response.getStatus()) && chat.getStatus() == ChatStatus.BUSY) {
                 List<Conversation> convs = chat.getConversation();
@@ -285,21 +288,11 @@ public class AppLogicImpl
                     chatDao.updateChat(chat);
                 }
             }
-
-            ChatDTO dto = ChatDTO.toDTO(chat);
-            if (chat.getConversation() != null) {
-                for (Conversation c : chat.getConversation()) {
-                    
-                dto.addConversation(ConversationDTO.toDTO(c));
-                }
-            }
-
-            return dto;
-
         } catch (Exception e) {
-            logger.severe("Error consultando ticket: " + e.getMessage());
-            return null;
+            logger.severe("Error consultando ticket gRPC: " + e.getMessage());
         }
+            ChatDTO dto = ChatDTO.toDTO(chat);
+            return dto;
     }       
 
     

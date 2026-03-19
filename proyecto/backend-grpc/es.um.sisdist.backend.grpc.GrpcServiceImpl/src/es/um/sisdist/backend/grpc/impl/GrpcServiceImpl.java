@@ -37,10 +37,10 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 
 
 	private void healthCheck() {
-		
+		System.out.println("Ha llegado al health check correctamente");
 		HttpClient client = HttpClient.newHttpClient();
 		HttpRequest aliveCheckRequest = HttpRequest.newBuilder()
-		.uri(URI.create("http://localhost:5020/healthcheck")) 
+		.uri(URI.create("http://ssdd-llamachat:5020/healthcheck")) 
 		.GET()
 		.build();
 
@@ -71,7 +71,7 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 	@Override
 	public void preguntarLlama(PromptRequest request, StreamObserver<TicketResponse> responseObserver) 
 	{
-
+		System.out.println("Llega hasta el impl de gRPC");
 		String userPrompt = request.getPromptRequest();
 		String userId = request.getIdUser();
 
@@ -86,7 +86,7 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		// Intentamos enviar la petición de un nuevo prompt al servidor Llama:
 
 		HttpRequest promptRequest = HttpRequest.newBuilder()
-		.uri(URI.create("http://localhost:5020/prompt")) 
+		.uri(URI.create("http://ssdd-llamachat:5020/prompt")) 
 		.header("Content-Type", "application/json")
 		.POST(HttpRequest.BodyPublishers.ofString(jsonBody))
 		.build();
@@ -141,7 +141,9 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 	{
 		String id_user = request.getIdUser();
 		String ticket = request.getTicketRequest();
-		
+		if (ticket != null) {
+			ticket = ticket.replace("]", "").replace("[", "").trim();
+		}
 		// Se comprueban el JWT del usuario, etc.
 
 
@@ -150,7 +152,7 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		HttpClient client = HttpClient.newHttpClient();
 
 		HttpRequest consultaTicketRequest = HttpRequest.newBuilder()
-		.uri(URI.create("http://localhost:5020/response" + ticket)) 
+		.uri(URI.create("http://ssdd-llamachat:5020/response/" + ticket)) 
 		.GET()
 		.build();
 
@@ -158,36 +160,45 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		try {
 			healthCheck();
 			consultaTicketResponse = client.send(consultaTicketRequest, HttpResponse.BodyHandlers.ofString());
+		
+		
+			int statusConsulta = consultaTicketResponse.statusCode();
+
+			// Se ha obtenido respuesta.
+			if (statusConsulta == 200) {
+				String respuestaLlama = consultaTicketResponse.body();
+				responseObserver.onNext(PromptResponse.newBuilder().setStatus("READY").setResponse(respuestaLlama).build());
+				responseObserver.onCompleted();
+				return;
+			}
+
+			// Está ocupado
+			if (statusConsulta == 102 ) {
+
+				responseObserver.onNext(PromptResponse.newBuilder().setStatus("BUSY").build());
+				responseObserver.onCompleted();
+				return;
+			}
+
+			if (statusConsulta == 404) {
+
+				responseObserver.onNext(PromptResponse.newBuilder().setStatus("TOKEN INVALIDO").build());
+				responseObserver.onCompleted();
+				return;
+			}
+			responseObserver.onCompleted();
 		} catch (IOException | InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return;
-		}
-		int statusConsulta = consultaTicketResponse.statusCode();
-
-		// Se ha obtenido respuesta.
-		if (statusConsulta == 200) {
-			String respuestaLlama = consultaTicketResponse.body();
-			responseObserver.onNext(PromptResponse.newBuilder().setStatus("READY").setResponse(respuestaLlama).build());
+		String errorMsg = e.getMessage();
+			System.err.println("Error en gRPC consultaTicket: " + errorMsg);
+			
+			if (errorMsg != null && errorMsg.contains("no bytes")) {
+				System.err.println("Interceptado error de no bytes -> Traduciendo a BUSY para que el front espere");
+				responseObserver.onNext(PromptResponse.newBuilder().setStatus("BUSY").build());
+			} else {
+				responseObserver.onNext(PromptResponse.newBuilder().setStatus("ERROR").build());
+			}
+		} finally {
 			responseObserver.onCompleted();
-			return;
 		}
-
-		// Está ocupado
-		if (statusConsulta == 102 ) {
-
-			responseObserver.onNext(PromptResponse.newBuilder().setStatus("BUSY").build());
-			responseObserver.onCompleted();
-			return;
-		}
-
-		if (statusConsulta == 404) {
-
-			responseObserver.onNext(PromptResponse.newBuilder().setStatus("TOKEN INVALIDO").build());
-			responseObserver.onCompleted();
-			return;
-		}
-
-		responseObserver.onCompleted();
 	}
 }
