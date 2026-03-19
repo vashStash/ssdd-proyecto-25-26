@@ -188,7 +188,7 @@ def mostrar_chat(userid, chatid):
     chat_url = f'http://backend-rest:8080/Service/u/{userid}/chat/{chatid}'
     r_chat = requests.get(chat_url)
     print('printing la respuesta del chat especifico')
-    r_chat.raise_for_status
+    r_chat.raise_for_status()
     print(r_chat.headers)
     print(r_chat.content)
     chat_seleccionado = r_chat.json() if r_chat.ok else None
@@ -200,6 +200,14 @@ def mostrar_chat(userid, chatid):
         logging.error(f"Chat con ID {chatid} no encontrado para el usuario {userid}.")
         flash("Chat no encontrado.", "danger")
         return redirect(url_for('chats', userid=userid))
+
+    if not chat_seleccionado.get('conversation'):
+        chat_seleccionado['conversation'] = [
+            {
+                'prompt': '', 
+                'answer': 'Hola, soy Llama. Escríbeme y dime en qué te puedo ayudar hoy.'
+            }
+        ]
 
     # Si todo va bien, renderiza el template chats.html
     return render_template('chats.html', userid=userid,

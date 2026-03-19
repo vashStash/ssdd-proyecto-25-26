@@ -193,18 +193,26 @@ public class AppLogicImpl
     public Optional<Chat> getChat(String userid, String chatid){
         
         Optional<Chat> hola = chatDao.getChatById(chatid);
-        System.out.println(hola.toString());
+        System.out.println("Se llega hasta getChats");
         Optional<User> user = dao.getUserById(userid);
+        
+        if (!hola.isPresent() || !user.isPresent()) {
+
+            System.out.println("No lo termina de crear");
+            return Optional.empty();
+        }
+
         System.out.println("Se muestra info de usuario");
         System.out.println(user.get().toString());
 
-        if(!hola.isPresent() 
-            || !user.isPresent() 
-            || !user.get().getChatList().contains(hola.get().getId())){
-                return Optional.empty();
+        for (Chat chat : user.get().getChatList()) {
+            if (chat.getId().equals(hola.get().getId())) {
+                
+                System.out.println("devuelve algo");
+                return hola;
             }
-
-        return hola;
+        }
+        return Optional.empty();
     }
 
 

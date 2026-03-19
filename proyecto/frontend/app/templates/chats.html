@@ -37,10 +37,12 @@
             <div class="chat-box" id="chatBox">
                 {% if chat_seleccionado.conversation and chat_seleccionado.conversation|length > 0 %}
                     {% for mensaje in chat_seleccionado.conversation %}
+                        {% if mensaje.prompt %}
                         <div class="message user-message">
                             <strong>Tú:</strong><br>
                             {{ mensaje.prompt }}
                         </div>
+                        {% endif %}
                         {% if mensaje.answer %}
                         <div class="message bot-message">
                             <strong>Llama:</strong><br>

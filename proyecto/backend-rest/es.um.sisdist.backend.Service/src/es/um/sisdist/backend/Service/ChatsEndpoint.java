@@ -72,9 +72,8 @@ public class ChatsEndpoint {
          if(!u.isPresent()){
             System.out.println("getChatList: Usuario no encontrado: " + userid);
             return Response.status(Status.NOT_FOUND).build();
-        } else {
-            System.out.println("creando nuevo chat para " + u.get().getName());
-        }
+         }
+        System.out.println("creando nuevo chat para " + u.get().getName());
 
         String chatID = impl.crearChat(userid, chatname);
 
