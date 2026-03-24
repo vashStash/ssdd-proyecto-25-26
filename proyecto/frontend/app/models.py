@@ -11,6 +11,7 @@ class User(UserMixin):
         self.email = email
         self.password = hashlib.sha256(password.encode('utf-8')).hexdigest()
         self.is_admin = is_admin
+        self.chatlist = []
 
     def set_password(self, password):
         self.password = hashlib.sha256(password).hexdigest()
@@ -23,6 +24,9 @@ class User(UserMixin):
             if user.email == email:
                 return user
             return None
+        
+    def get_current_chatlist(user):
+        return user.chatlist
 
     def __repr__(self):
         return '<User {}>'.format(self.email)

@@ -1,5 +1,6 @@
 package es.um.sisdist.backend.Service.impl;
 
+import java.lang.StackWalker.Option;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -71,6 +72,8 @@ public class AppLogicImpl
 
         chatDao = daoFactory.createMongoChatDao();
 
+        chatDao = daoFactory.createMongoChatDao();
+
         var grpcServerName = Optional.ofNullable(System.getenv("GRPC_SERVER"));
         var grpcServerPort = Optional.ofNullable(System.getenv("GRPC_SERVER_PORT"));
 
@@ -121,6 +124,12 @@ public class AppLogicImpl
 
         if (u.isPresent())
         {
+            List<Chat> chatUser = chatDao.getChatsByUserId(u.get().getId());
+            if (chatUser == null) {
+                chatUser = new LinkedList<Chat>();
+            }
+            u.get().setChatList(chatUser);
+
             System.out.println("applogic: usuario recuperado" + u.get().toString());
             String hashed_pass = UserUtils.md5pass(pass);
             System.out.println("Contraseña recibida (hashed): " + hashed_pass + " \nContraseña almacenada: " + u.get().getPassword_hash());
@@ -163,14 +172,59 @@ public class AppLogicImpl
     }
 
     //////////////////////// CHATS /////////////////////
+    
+    public List<ChatDTO> getChatList(String userid){
+        LinkedList<ChatDTO> chatlist = new LinkedList<ChatDTO>();
+        for (Chat chat: chatDao.getChatsByUserId(userid)) {
+            chatlist.add(new ChatDTO(chat.getId(), chat.getName(), chat.getNextToken(), chat.getStatus()));
+        }
+        return chatlist;
+    }
+
+    public String crearChat(String userid, String chatName){
+        Chat chat = new Chat(userid, chatName, ChatStatus.READY, null);
+        User user = dao.getUserById(userid).get();
+        chatDao.createChat(chat);        
+        user.addChat(chat);
+        dao.updateUser(user);
+        return chat.getId();
+    }
+
+    public Optional<Chat> getChat(String userid, String chatid){
+        
+        Optional<Chat> hola = chatDao.getChatById(chatid);
+        System.out.println("Se llega hasta getChats");
+        Optional<User> user = dao.getUserById(userid);
+        
+        if (!hola.isPresent() || !user.isPresent()) {
+
+            System.out.println("No lo termina de crear");
+            return Optional.empty();
+        }
+
+        System.out.println("Se muestra info de usuario");
+        System.out.println(user.get().toString());
+
+        for (Chat chat : user.get().getChatList()) {
+            if (chat.getId().equals(hola.get().getId())) {
+                
+                System.out.println("devuelve algo");
+                return hola;
+            }
+        }
+        return Optional.empty();
+    }
+
+
+    /////////////////////// PROMPTS //////////////////////
 
     //Enviamos la solicitud para recibir un Token:
 
     public ResultadoEnvioLlama enviarPromptLlama(String userId, String dialogueId, String token, String prompt) {
-    
+        
         Chat chat = chatDao.getChatById(dialogueId).orElse(null);
         
-        if (chat == null) {
+        if (chat == null || !chat.getUser_id().equals(userId)) {
 
             return new ResultadoEnvioLlama("ERROR", "Chat no encontrado");
         }
@@ -187,6 +241,7 @@ public class AppLogicImpl
         try {
         
             Conversation nuevoMensaje = new Conversation(UUID.randomUUID().toString(), dialogueId, prompt, "");
+            nuevoMensaje.setCreationDate(new java.util.Date());
             chat.addConversation(nuevoMensaje);
             chat.setStatus(ChatStatus.BUSY);
             chat.setNextToken(null);
@@ -209,16 +264,18 @@ public class AppLogicImpl
         }
     }
 
-    public ChatDTO consultarRespuestaLlama(String userId, String dialogueId, String ticket) {      
+    public ChatDTO consultarRespuestaLlama(String userId, String dialogueId, String ticket) {
+        
+        Chat chat = chatDao.getChatById(dialogueId).orElse(null);
+        if (chat == null) return null;
+        System.out.println("Otra vez toca reinicio?");
+        String ticketLimpio = (ticket != null) ? ticket.replace("]", "").replace("[", "").trim() : "";
         try {
             
-            TicketRequest request = TicketRequest.newBuilder().setTicketRequest(ticket)
+            TicketRequest request = TicketRequest.newBuilder().setTicketRequest(ticketLimpio)
                     .build();
 
             PromptResponse response = blockingStub.consultaTicket(request);
-
-            Chat chat = chatDao.getChatById(dialogueId).orElse(null);
-            if (chat == null) return null;
 
             if ("READY".equals(response.getStatus()) && chat.getStatus() == ChatStatus.BUSY) {
                 List<Conversation> convs = chat.getConversation();
@@ -231,38 +288,13 @@ public class AppLogicImpl
                     chatDao.updateChat(chat);
                 }
             }
-
-            ChatDTO dto = ChatDTO.toDTO(chat);
-            if (chat.getConversation() != null) {
-                for (Conversation c : chat.getConversation()) {
-                    
-                dto.addConversation(ConversationDTO.toDTO(c));
-                }
-            }
-
-            return dto;
-
         } catch (Exception e) {
-            logger.severe("Error consultando ticket: " + e.getMessage());
-            return null;
+            logger.severe("Error consultando ticket gRPC: " + e.getMessage());
         }
+            ChatDTO dto = ChatDTO.toDTO(chat);
+            return dto;
     }       
 
-    public List<ChatDTO> getChatList(String userid){
-        LinkedList<ChatDTO> chatlist = new LinkedList<ChatDTO>();
-        for (Chat chat: chatDao.getChatsByUserId(userid)) {
-            chatlist.add(new ChatDTO(chat.getId(), chat.getName(), chat.getNextToken(), chat.getStatus()));
-        }
-        return chatlist;
-    }
-
-    public String crearChat(String userid, String chatName){
-        Chat chat = new Chat(userid, chatName, ChatStatus.READY, null);
-        User user = dao.getUserById(userid).get();
-        chatDao.createChat(chat);        
-        user.addChat(chat.getId());
-        dao.updateUser(user);
-        return chat.getId();
-    }
+    
 
 }

@@ -5,8 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import javax.print.attribute.standard.Media;
+
 import es.um.sisdist.backend.Service.impl.AppLogicImpl;
 import es.um.sisdist.backend.dao.models.Chat;
+import es.um.sisdist.backend.dao.models.Conversation;
 import es.um.sisdist.backend.dao.models.utils.ChatStatus;
 import es.um.sisdist.backend.grpc.PromptResponse;
 import es.um.sisdist.backend.grpc.TicketResponse;
@@ -37,7 +40,7 @@ public class ChatsEndpoint {
     private AppLogicImpl impl = AppLogicImpl.getInstance();
 
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
     @Path("/chats")
     public Response getChatList(@PathParam("userid") String userid)
     {
@@ -55,6 +58,7 @@ public class ChatsEndpoint {
         if (chatlist == null){
             return Response.status(Status.NOT_FOUND).build();
         }
+        System.out.println("se devolverá " + chatlist.toString());
         return Response.ok(chatlist, MediaType.APPLICATION_JSON).build();
     }
 
@@ -68,9 +72,8 @@ public class ChatsEndpoint {
          if(!u.isPresent()){
             System.out.println("getChatList: Usuario no encontrado: " + userid);
             return Response.status(Status.NOT_FOUND).build();
-        } else {
-            System.out.println("creando nuevo chat para " + u.get().getName());
-        }
+         }
+        System.out.println("creando nuevo chat para " + u.get().getName());
 
         String chatID = impl.crearChat(userid, chatname);
 
@@ -78,15 +81,37 @@ public class ChatsEndpoint {
         return Response.ok(chatID, MediaType.APPLICATION_JSON).build();
     }
 
+    @GET
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/chat/{chatid}")
+    public Response getChat(@PathParam("userid") String userid, @PathParam("chatid") String chatid){
+      
+        Optional<Chat> chat = impl.getChat(userid, chatid);
+        System.out.println("Recibida petición de chat: " + chat.get());
+
+        if (chat.isEmpty()) {
+            return Response.status(Status.NOT_FOUND).build();
+        } else {
+            System.out.println("devolviendo chat: " + chat.get().toString());
+            ChatDTO chatDTO = ChatDTO.toDTO(chat.get());
+            for (Conversation conversation : chat.get().getConversation()) {
+                chatDTO.addConversation(ConversationDTO.toDTO(conversation));
+            }
+            return Response.ok(chatDTO, MediaType.APPLICATION_JSON).build();
+        }
+    }
+
+
     @POST
     @Path("/dialogue/{dialogueId}/next/{token : (.*)}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response enviarPrompt (@PathParam("userid") String userId, @PathParam("dialogueId") String dialogueId, @PathParam("token") String token, ConversationDTO input, @Context UriInfo uriInfo){
-
+        System.out.println("Entra para pedir al token");
         String tokenTratado = (token == null || token.isEmpty()) ? null : token;
 
         ResultadoEnvioLlama resLlama = impl.enviarPromptLlama(userId, dialogueId, tokenTratado, input.getPrompt());
-        
+        System.out.println("Vuelve de la llamada a grpc");
         if ("ACEPTADO".equals(resLlama.getEstado())) {
             
             URI location = uriInfo.getBaseUriBuilder()
@@ -94,6 +119,8 @@ public class ChatsEndpoint {
                 .path("dialogue").path(dialogueId)
                 .queryParam("t", resLlama.getRespuesta())
                 .build();
+                System.out.println("Este es el token recibido " + resLlama.getRespuesta());
+
             return Response.status(Response.Status.ACCEPTED)
                         .location(location)
                         .build();
@@ -128,7 +155,7 @@ public class ChatsEndpoint {
     @Path("/dialogue/{dialogueId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response consultarEstado(@PathParam("userid") String userId, @PathParam("dialogueId") String dialogueId, @QueryParam("t") String ticket) { 
-
+        System.out.println("Lo consulta de verdad el token");
         if (ticket == null || ticket.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
                         .entity("{\"error\":\"Falta el token de seguimiento\"}")
