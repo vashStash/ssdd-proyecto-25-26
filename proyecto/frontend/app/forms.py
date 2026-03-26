@@ -13,3 +13,11 @@ class RegisterForm(FlaskForm):
     username = StringField('Nombre de usuario', validators=[InputRequired()])
     password = PasswordField('Contraseña', validators=[InputRequired()])#EqualTo('confirm', message='Passwords must match')
     #confirm = PasswordField('Repeat Password')
+
+class ProfileUpdateForm(FlaskForm):
+    newname = StringField('Nuevo Nombre de usuario', validators=[InputRequired()])
+    newmail = StringField('Nuevo Correo Electrónico', validators=[InputRequired(),Email(message='La dirección de correo no es válida')])
+
+class PasswordUpdateForm(FlaskForm):
+    oldpass = PasswordField('Contraseña antigua', validators=[InputRequired()])#EqualTo('confirm', message='Passwords must match')
+    newpass = PasswordField('Contraseña nueva', validators=[InputRequired()])

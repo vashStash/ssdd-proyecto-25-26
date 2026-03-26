@@ -171,6 +171,14 @@ public class AppLogicImpl
         //     : false;
     }
 
+    public boolean updateUser(User user, String newUsername){
+        Optional<User> u = dao.getUserById(user.getId());
+
+        if(!u.isPresent())   return false;
+
+        user = u.get();
+        return dao.updateUser(user);
+    }
     //////////////////////// CHATS /////////////////////
     
     public List<ChatDTO> getChatList(String userid){
