@@ -13,3 +13,7 @@ class RegisterForm(FlaskForm):
     username = StringField('Nombre de usuario', validators=[InputRequired()])
     password = PasswordField('Contraseña', validators=[InputRequired()])#EqualTo('confirm', message='Passwords must match')
     #confirm = PasswordField('Repeat Password')
+
+class ProfileUpdateForm(FlaskForm):
+    newname = StringField('Nuevo Nombre de usuario', validators=[InputRequired()])
+    password = PasswordField('Nueva Contraseña', validators=[InputRequired()])

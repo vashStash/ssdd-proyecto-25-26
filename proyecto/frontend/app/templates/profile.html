@@ -2,6 +2,42 @@
 
 {% block content %}
 <h1 class="title">
-    Welcome, {{current_user.name}}!! {{current_user.email}}
+    Bienvenido, {{current_user.name}}! {{current_user.email}}
+
+     <!-- Tarjeta de perfil -->
+    <div class="card shadow p-4">
+
+        <h3 class="text-center mb-4">Perfil de usuario</h3>
+
+        <!-- Nombre de usuario -->
+        <div class="mb-3">
+            <label class="form-label">Nombre de usuario</label>
+            <div class="d-flex">
+                <input type="text" class="form-control" 
+                       value="{{ current_user.name }}" readonly>
+                <form method="post" action="{{ url_for('cambiar_nombre') }}">
+                    <button type="submit" class="btn btn-primary ms-2">
+                        Cambiar
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Email (opcional, solo mostrar) -->
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="text" class="form-control" 
+                   value="{{ current_user.email }}" readonly>
+        </div>
+
+        <hr>
+
+        <!-- Botón cambiar contraseña -->
+        <form method="post" action="{{ url_for('cambiar_password') }}">
+            <button type="submit" class="btn btn-danger w-100">
+                Cambiar contraseña
+            </button>
+        </form>
+
 </h1>
 {% endblock %}

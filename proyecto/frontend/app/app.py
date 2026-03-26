@@ -75,13 +75,6 @@ def login():
 
         return render_template('login.html', form=form,  error=error)
 
-@app.route('/profile')
-@login_required
-def profile():
-    if not current_user.is_authenticated:
-        return render_template('index.html')
-
-    return render_template('profile.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -351,6 +344,62 @@ def nuevochat():
         flash("Error al crear el chat. Inténtalo de nuevo.", "danger")
         return redirect(url_for('chats'))
 
+@app.route('/profile')
+@login_required
+def profile():
+    if not current_user.is_authenticated:
+        return render_template('index.html')
+
+    return render_template('profile.html')
+
+@app.route('/profile/cambiar_nombre', methods=['POST'])
+@login_required
+def cambiar_nombre():
+    ##  TODO si no actualiza correctamente el user recibe 406 NOT_ACCEPTABLE
+    if not current_user.is_authenticated:
+        return render_template('index.html')
+    else:
+        error = None
+        form = ProfileUpdateForm(None if request.method != 'POST' else request.form)
+        if request.method == "POST":
+            query_url = ('http://backend-rest:8080/Service/u/{userid}/profile/cambiar_nombre')
+            userdata = {
+                'userid' : form.id.data,
+                'newUsername' : form.newname.data
+            }
+            headers = {'Content-Type': 'application/json'}
+
+            r = requests.post(query_url, json=userdata, headers=headers)
+
+            if r.ok:
+                # recibir los datos del usuario desde el backend y construir un usuario
+                # buscarlo en users (load_user) y si no está, añadirlo
+                # llamar a login_user
+                json_user = r.json()
+                print("nombre cambiado todo guay")
+
+@app.route('/profile/cambiar_password', methods=['POST'])
+@login_required
+def cambiar_password():
+    ## TODO si no actualiza correctamente el user recibe 406 NOT_ACCEPTABLE
+    if not current_user.is_authenticated:
+        return render_template('index.html')
+    else:
+        error = None
+        if request.method == "POST":
+            form = ProfileUpdateForm(None if request.method != 'POST' else request.form)
+            query_url = ('http://backend-rest:8080/Service/u/{userid}/profile/cambiar_password')
+            userdata = {
+                'userid' : form.id.data,
+                'newPassword' : form.password.data
+            }
+            headers = {'Content-Type': 'application/json'}
+
+            r = requests.post(query_url, json=userdata, headers=headers)
+
+            if r.ok:
+                json_user = r.json()
+                print("contraseña cambiada todo guay")
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5010)))
