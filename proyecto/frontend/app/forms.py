@@ -15,8 +15,8 @@ class RegisterForm(FlaskForm):
     #confirm = PasswordField('Repeat Password')
 
 class ProfileUpdateForm(FlaskForm):
-    newname = StringField('Nuevo Nombre de usuario', validators=[InputRequired()])
-    newmail = StringField('Nuevo Correo Electrónico', validators=[InputRequired(),Email(message='La dirección de correo no es válida')])
+    newname = StringField('newname', validators=[])
+    newmail = StringField('newmail', validators=[Email(message='La dirección de correo no es válida')])
 
 class PasswordUpdateForm(FlaskForm):
     oldpass = PasswordField('Contraseña antigua', validators=[InputRequired()])#EqualTo('confirm', message='Passwords must match')

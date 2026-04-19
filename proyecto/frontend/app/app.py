@@ -44,6 +44,7 @@ def login():
             }
             headers = {'Content-Type': 'application/json'}
 
+            print(userdata)
             r = requests.post(query_url, json=userdata, headers=headers)
 
             if r.ok:
@@ -350,35 +351,48 @@ def profile():
     if not current_user.is_authenticated:
         return render_template('index.html')
 
-    return render_template('profile.html')
+    form = ProfileUpdateForm()
+    return render_template('profile.html', form=form)
 
-@app.route('/profile/cambiar_datos', methods=['POST'])
+@app.route('/u/<userid>/profile/cambiardatos', methods=['POST'])
 @login_required
-def cambiar_datos():
+def cambiar_datos(userid):
     ##  TODO si no actualiza correctamente el user recibe 406 NOT_ACCEPTABLE
     if not current_user.is_authenticated:
         return render_template('index.html')
     else:
+        print("hola")
         error = None
-        form = ProfileUpdateForm(None if request.method != 'POST' else request.form)
+        form = ProfileUpdateForm()
+        print(form.newmail, form.newname)
+        print("request.method", request.method, form.validate_on_submit())
         if request.method == "POST":
-            query_url = ('http://backend-rest:8080/Service/u/{userid}/profile/cambiar_datos')
+            userid = current_user.id    
+            query_url = f'http://backend-rest:8080/Service/profile/{userid}/cambiardatos'
             userdata = {
-                'newUsername' : form.newname.data,
-                'newEmail' : form.newmail.data
+                'name' : form.newname.data,
+                'email' : form.newmail.data
             }
             headers = {'Content-Type': 'application/json'}
+            print("viene userdata")
+            print(userdata)
 
             r = requests.post(query_url, json=userdata, headers=headers)
 
+            print(r.status_code)
+            print(r.text)
             if r.ok:
                 # recibir los datos del usuario desde el backend y construir un usuario
                 # buscarlo en users (load_user) y si no está, añadirlo
                 # llamar a login_user
-                json_user = r.json()
+                current_user.name = form.newname
+                current_user.mail = form.newmail
                 print("nombre cambiado todo guay")
 
-            return render_template('profile.html') 
+            return render_template('profile.html', form=form) 
+        else: 
+            print("eres tontito")
+        return redirect(url_for('profile'))
 
 @app.route('/profile/cambiar_password', methods=['POST'])
 @login_required

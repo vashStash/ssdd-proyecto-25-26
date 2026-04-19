@@ -45,7 +45,7 @@ public class ChatsEndpoint {
     public Response getChatList(@PathParam("userid") String userid)
     {
         Optional<User> u = impl.getUserById(userid);
-
+        
         if(!u.isPresent()){
             System.out.println("getChatList: Usuario no encontrado: " + userid);
             return Response.status(Status.NOT_FOUND).build();
@@ -58,7 +58,7 @@ public class ChatsEndpoint {
         if (chatlist == null){
             return Response.status(Status.NOT_FOUND).build();
         }
-        System.out.println("se devolverá " + chatlist.toString());
+        // System.out.println("se devolverá " + chatlist.toString());
         return Response.ok(chatlist, MediaType.APPLICATION_JSON).build();
     }
 
@@ -88,12 +88,12 @@ public class ChatsEndpoint {
     public Response getChat(@PathParam("userid") String userid, @PathParam("chatid") String chatid){
       
         Optional<Chat> chat = impl.getChat(userid, chatid);
-        System.out.println("Recibida petición de chat: " + chat.get());
+        // System.out.println("Recibida petición de chat: " + chat.get());
 
         if (chat.isEmpty()) {
             return Response.status(Status.NOT_FOUND).build();
         } else {
-            System.out.println("devolviendo chat: " + chat.get().toString());
+            // System.out.println("devolviendo chat: " + chat.get().toString());
             ChatDTO chatDTO = ChatDTO.toDTO(chat.get());
             for (Conversation conversation : chat.get().getConversation()) {
                 chatDTO.addConversation(ConversationDTO.toDTO(conversation));

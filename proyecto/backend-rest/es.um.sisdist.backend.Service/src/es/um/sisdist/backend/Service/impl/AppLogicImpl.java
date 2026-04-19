@@ -171,13 +171,29 @@ public class AppLogicImpl
         //     : false;
     }
 
-    public boolean updateUser(User user, String newUsername){
-        Optional<User> u = dao.getUserById(user.getId());
+    /////////////////////// PROFILE //////////////////////
 
-        if(!u.isPresent())   return false;
+    public int updateUser(String userid, UserDTO userdto){
+        Optional<User> u = dao.getUserById(userid);
 
-        user = u.get();
-        return dao.updateUser(user);
+        // return 1: not found
+        if(!u.isPresent())   return 1;
+
+        System.out.println("se ha recibido nombre " + userdto.getName() + " y " + userdto.getEmail());
+        User user = u.get();
+
+        user.setName(userdto.getName());
+        user.setEmail(userdto.getEmail());
+
+        System.out.println("cambiando el usuario " + userid + " con nombre " + userdto.getName() + " y email " + userdto.getEmail());
+
+        //return 2: error updating
+        if(!dao.updateUser(user)) return 2;
+        else return 0;
+    }
+
+    public boolean updatePwd(User user, String newpwd){
+        return true;
     }
     //////////////////////// CHATS /////////////////////
     
