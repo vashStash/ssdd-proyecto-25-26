@@ -30,8 +30,20 @@
 
     <div class="main-content">
         {% if chat_seleccionado %}
-            <div class="chat-header">
-                <h3>{{ chat_seleccionado.name }}</h3>
+            <div class="chat-header d-flex justify-content-between align-items-center mb-3">
+                <h3 class="m-0">{{ chat_seleccionado.name }}</h3>
+                
+                {% if chat_seleccionado.status != 'FINISHED' %}
+                    <form action="{{ url_for('end_chat', chatId=chat_seleccionado.id) }}" method="POST" style="margin: 0;">
+                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Seguro que quieres cerrar este chat? Ya no podrás escribir más.');">
+                            <i class="bi bi-x-circle"></i> Terminar Chat
+                        </button>
+                    </form>
+                {% else %}
+                    <span class="badge bg-secondary">
+                        <i class="bi bi-check-circle"></i> Chat Finalizado
+                    </span>
+                {% endif %}
             </div>
 
             <div class="chat-box" id="chatBox">

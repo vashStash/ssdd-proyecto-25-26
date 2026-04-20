@@ -177,6 +177,25 @@ public class ChatsEndpoint {
             return Response.status(Response.Status.ACCEPTED).build();
         }
     }
+
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/chat/{chatId}/end")
+    public Response finalizarChat(@PathParam("userid") String userid, @PathParam("chatId") String chatid){
+      
+        boolean resultado = impl.finalizarChat(userid, chatid);
+
+        if (resultado) {
+
+            return Response.ok().build();
+        } 
+
+        return Response.status(Response.Status.NOT_FOUND).build();
+    }
    
+
+
+
 
 }

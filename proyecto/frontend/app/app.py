@@ -352,6 +352,32 @@ def nuevochat():
         return redirect(url_for('chats'))
 
 
+@app.route('/end/<chatId>', methods=['POST'])
+@login_required
+def end_chat(chatId):
+
+    userid = current_user.id
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/chat/{chatId}/end'
+
+    try:
+
+        r = requests.post(query_url)
+
+        if r.status == 200:
+            flash('El chat ha finalizado correctamente', "success")
+        elif r.status_code == 404:
+            flash("No se encuentra el chat para finalizarlo", "warning")
+        else:
+            flash("No se pudo finalizar el chat. Error interno.", "danger")
+
+    except Exception as e:
+        print(f"Error al conectar con Java para finalizar chat: {e}")
+        flash("Error de conexión con el servidor backend.", "danger")   
+
+    return redirect(url_for('chats'))
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5010)))
 

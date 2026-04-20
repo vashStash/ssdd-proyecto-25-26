@@ -190,6 +190,22 @@ public class AppLogicImpl
         return chat.getId();
     }
 
+    public boolean finalizarChat(String userid, String chatId) {
+
+
+        Chat chat = chatDao.getChatById(chatId).orElse(null);
+
+        if (chat != null) {
+
+            chat.setStatus(ChatStatus.FINISHED);
+            chatDao.updateChat(chat);
+
+            return true;
+        }
+
+        return false;
+    }
+
     public Optional<Chat> getChat(String userid, String chatid){
         
         Optional<Chat> hola = chatDao.getChatById(chatid);
