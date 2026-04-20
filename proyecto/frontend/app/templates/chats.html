@@ -136,21 +136,35 @@ function esperarRespuesta(requestId, dialogueId) {
     const intervalId = setInterval(() => {
         fetch(`/consultar_estado/${dialogueId}/${requestId}`)
             .then(res => {
+
+                if (res.status == 404){
+                    clearInterval(intervalId);
+                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
+                    return null;
+                }
                 if (!res.ok) throw new Error("Error en la respuesta del servidor");
+                
                 return res.json();
             })
             .then(data => {
+                if (!data) return;
+
                 console.log("Estado recibido:", data.status);
 
                 if (data.status === 'READY') {
                 
                     clearInterval(intervalId);
-                    location.reload();
-                } 
+                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
+                }
+                else if (data.status === 'TOKEN INVALIDO') {
+
+                    clearInterval(intervalId);
+                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
+                }
                 else if (data.status === 'ERROR') {
                     clearInterval(intervalId);
                     alert("Error de la IA: " + (data.message || "Desconocido"));
-                    location.reload();
+                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
                 }
                 
             })

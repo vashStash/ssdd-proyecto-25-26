@@ -168,23 +168,18 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 			if (statusConsulta == 200) {
 				String respuestaLlama = consultaTicketResponse.body();
 				responseObserver.onNext(PromptResponse.newBuilder().setStatus("READY").setResponse(respuestaLlama).build());
-				responseObserver.onCompleted();
-				return;
 			}
-
 			// Está ocupado
-			if (statusConsulta == 102 ) {
-
+			else if (statusConsulta == 102 ) {
 				responseObserver.onNext(PromptResponse.newBuilder().setStatus("BUSY").build());
-				responseObserver.onCompleted();
-				return;
 			}
 
-			if (statusConsulta == 404) {
+			else if (statusConsulta == 404) {
 
 				responseObserver.onNext(PromptResponse.newBuilder().setStatus("TOKEN INVALIDO").build());
-				responseObserver.onCompleted();
-				return;
+			}
+			else {
+				responseObserver.onNext(PromptResponse.newBuilder().setStatus("ERROR").build());
 			}
 			responseObserver.onCompleted();
 		} catch (IOException | InterruptedException e) {
@@ -197,7 +192,6 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 			} else {
 				responseObserver.onNext(PromptResponse.newBuilder().setStatus("ERROR").build());
 			}
-		} finally {
 			responseObserver.onCompleted();
 		}
 	}
