@@ -59,6 +59,7 @@ public class MongoUserDAO implements IUserDAO
     public Optional<User> getUserById(String id)
     {
         Optional<User> user = Optional.ofNullable(collection.find(eq("id", id)).first());
+        System.out.println("dao user recibio id " + id);
         if(user.isPresent()) System.out.println("recuperando user desdel dao: " + user.get().toString());
         else System.out.println("se ha rallao el dao user");
         return user;

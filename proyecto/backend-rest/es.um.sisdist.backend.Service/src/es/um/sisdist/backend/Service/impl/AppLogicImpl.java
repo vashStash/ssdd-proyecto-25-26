@@ -20,6 +20,7 @@ import es.um.sisdist.backend.grpc.TicketRequest;
 import es.um.sisdist.backend.grpc.PromptResponse;
 import es.um.sisdist.models.ChatDTO;
 import es.um.sisdist.models.ConversationDTO;
+import es.um.sisdist.models.PasswordDTO;
 import es.um.sisdist.models.ResultadoEnvioLlama;
 import es.um.sisdist.models.ChatDTO;
 import es.um.sisdist.models.UserDTO;
@@ -192,8 +193,21 @@ public class AppLogicImpl
         else return 0;
     }
 
-    public boolean updatePwd(User user, String newpwd){
-        return true;
+    public int updatePwd(String userid, PasswordDTO pwdDTO){
+        Optional<User> u = dao.getUserById(userid);
+
+        // return 1: not found
+        if(!u.isPresent())   return 1;
+        User user = u.get();
+
+        // return 2: old password doesn't match
+        if(!user.getPassword_hash().equals(pwdDTO.getOldPassowrd())) return 2;
+
+        user.setPassword_hash(pwdDTO.getNewPassword());
+
+        // return 3: error updating password
+        if(!dao.updateUser(user)) return 3;
+        else return 0;
     }
     //////////////////////// CHATS /////////////////////
     

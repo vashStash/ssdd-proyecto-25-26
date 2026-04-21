@@ -357,7 +357,7 @@ def profile():
         return render_template('index.html')
 
     form = ProfileUpdateForm()
-    return render_template('profile.html', form=form)
+    return render_template('profile.html', form=form, userid=current_user.id)
 
 @app.route('/u/<userid>/profile/cambiardatos', methods=['POST'])
 @login_required
@@ -399,28 +399,48 @@ def cambiar_datos(userid):
             print("eres tontito")
         return redirect(url_for('profile'))
 
-@app.route('/profile/cambiar_password', methods=['POST'])
+@app.route('/u/<userid>/profile/cambiar_pwd', methods=['POST'])
 @login_required
-def cambiar_password():
+def cambiar_pwd(userid):
     ## TODO si no actualiza correctamente el user recibe 406 NOT_ACCEPTABLE
     if not current_user.is_authenticated:
         return render_template('index.html')
     else:
         error = None
         if request.method == "POST":
+            userid = current_user.id
             form = PasswordUpdateForm(None if request.method != 'POST' else request.form)
-            query_url = ('http://backend-rest:8080/Service/u/{userid}/profile/cambiar_password')
+            query_url = f'http://backend-rest:8080/Service/profile/{userid}/cambiar_password'
             userdata = {
                 'oldPassword' : form.oldpass.data,
                 'newPassword' : form.newpass.data
             }
             headers = {'Content-Type': 'application/json'}
 
+            user = current_user
+
+            # if user.check_password(form.newpass.data):
+            #     user.set_password(form.newpass.data)
+            # else: 
+            #     return render_template('profile.html', form=form, pwd_msg="Error: la contraseña antigua no es correcta") 
+
             r = requests.post(query_url, json=userdata, headers=headers)
 
+            print(r.status_code)
+            print(r.text)
+
             if r.ok:
-                json_user = r.json()
                 print("contraseña cambiada todo guay")
+                current_user.name = form.newpass
+                return render_template('profile.html', form=form, pwd_msg="Contraseña cambiada con éxito") 
+            
+            elif r.status_code == 406:
+                return render_template('profile.html', form=form, pwd_msg="Error: la contraseña antigua no es correcta") 
+            else :
+                return render_template('profile.html', form=form, pwd_msg="Error al actualizar la contraseña") 
+        else: 
+            print("eres tontito")
+        return redirect(url_for('profile', form=form))
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5010)))

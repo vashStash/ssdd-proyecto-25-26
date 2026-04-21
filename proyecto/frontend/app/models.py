@@ -15,10 +15,10 @@ class User(UserMixin):
         self.visits = visits
 
     def set_password(self, password):
-        self.password = hashlib.sha256(password).hexdigest()
+        self.password = hashlib.sha256(password.encode('utf8')).hexdigest()
 
     def check_password(self, password):
-        return self.password == hashlib.sha256(password).hexdigest()
+        return self.password == hashlib.sha256(password.encode('utf8')).hexdigest()
 
     def get_user(email):
         for user in users:
