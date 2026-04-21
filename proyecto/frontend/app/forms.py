@@ -21,3 +21,4 @@ class ProfileUpdateForm(FlaskForm):
 class PasswordUpdateForm(FlaskForm):
     oldpass = PasswordField('Contraseña antigua', validators=[InputRequired()])#EqualTo('confirm', message='Passwords must match')
     newpass = PasswordField('Contraseña nueva', validators=[InputRequired()])
+

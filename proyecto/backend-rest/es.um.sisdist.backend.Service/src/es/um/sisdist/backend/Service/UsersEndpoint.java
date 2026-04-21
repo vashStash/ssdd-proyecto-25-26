@@ -78,4 +78,45 @@ public class UsersEndpoint
         }
         else return Response.status(Status.OK).build();
     }
+
+    @POST
+    @Path("/{username}/profile/cambiar_nombre")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response cambiarNombre(@PathParam("userid") String userid, String newUsername){
+        Optional<User> user = impl.getUserById(userid);
+
+        if(!user.isPresent()){
+            System.out.println("getChatList: Usuario no encontrado: " + userid);
+            return Response.status(Status.NOT_FOUND).build();
+        } else {
+            System.out.println("recuperando chats de: " + user.get().getName());
+        }
+
+        // no se si esto es correcto hacerlo aquí o mejor en el impl
+        user.get().setName(newUsername);
+
+        if(impl.updateUser(user.get(), newUsername)){
+            return Response.status(Status.NOT_ACCEPTABLE).build();
+        }
+        else return Response.status(Status.OK).build();
+    }
+
+    @POST
+    @Path("/{username}/profile/cambiar_password")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response cambiarPassword(@PathParam("userid") String userid, String newpwd){
+        Optional<User> user = impl.getUserById(userid);
+
+        if(!user.isPresent()){
+            System.out.println("getChatList: Usuario no encontrado: " + userid);
+            return Response.status(Status.NOT_FOUND).build();
+        } else {
+            System.out.println("recuperando chats de: " + user.get().getName());
+        }
+
+        if(impl.updateUser(user.get(), newpwd)){
+            return Response.status(Status.NOT_ACCEPTABLE).build();
+        }
+        else return Response.status(Status.OK).build();
+    }
 }
