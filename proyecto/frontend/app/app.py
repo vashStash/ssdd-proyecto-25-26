@@ -412,8 +412,8 @@ def cambiar_pwd(userid):
             form = PasswordUpdateForm(None if request.method != 'POST' else request.form)
             query_url = f'http://backend-rest:8080/Service/profile/{userid}/cambiar_password'
             userdata = {
-                'oldPassword' : form.oldpass.data,
-                'newPassword' : form.newpass.data
+                'oldPassword' : form.oldPassword.data,
+                'newPassword' : form.newPassword.data
             }
             headers = {'Content-Type': 'application/json'}
 
@@ -431,7 +431,7 @@ def cambiar_pwd(userid):
 
             if r.ok:
                 print("contraseña cambiada todo guay")
-                current_user.name = form.newpass
+                user.set_password(form.newPassword.data) 
                 return render_template('profile.html', form=form, pwd_msg="Contraseña cambiada con éxito") 
             
             elif r.status_code == 406:

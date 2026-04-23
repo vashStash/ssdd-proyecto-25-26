@@ -201,9 +201,9 @@ public class AppLogicImpl
         User user = u.get();
 
         // return 2: old password doesn't match
-        if(!user.getPassword_hash().equals(pwdDTO.getOldPassowrd())) return 2;
+        if(!user.getPassword_hash().equals(UserUtils.md5pass(pwdDTO.getOldPassword()))) return 2;
 
-        user.setPassword_hash(pwdDTO.getNewPassword());
+        user.setPassword_hash(UserUtils.md5pass(pwdDTO.getNewPassword()));
 
         // return 3: error updating password
         if(!dao.updateUser(user)) return 3;

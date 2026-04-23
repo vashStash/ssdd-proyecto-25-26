@@ -28,4 +28,5 @@ public class UserDTOUtils
         return new UserDTO(u.getId(), u.getEmail(), "", // Password never is returned back
                 u.getName(), u.getToken(), u.getVisits());
     }
+
 }

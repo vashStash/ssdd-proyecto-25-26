@@ -19,6 +19,6 @@ class ProfileUpdateForm(FlaskForm):
     newmail = StringField('newmail', validators=[Email(message='La dirección de correo no es válida')])
 
 class PasswordUpdateForm(FlaskForm):
-    oldpass = PasswordField('oldpass', validators=[InputRequired()])#EqualTo('confirm', message='Passwords must match')
-    newpass = PasswordField('newpass', validators=[InputRequired()])
+    oldPassword = PasswordField('oldpass', validators=[InputRequired()])#EqualTo('confirm', message='Passwords must match')
+    newPassword = PasswordField('newpass', validators=[InputRequired()])
 

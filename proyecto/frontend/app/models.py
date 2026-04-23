@@ -31,6 +31,9 @@ class User(UserMixin):
 
     def __repr__(self):
         return '<User {}>'.format(self.email)
+    
+    def hashPassword(password):
+        return hashlib.sha256(password.encode('utf8')).hexdigest()
 
 
 class Chat():

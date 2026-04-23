@@ -7,17 +7,25 @@ public class PasswordDTO {
     /**
      * @return the old password
      */
-    public String getOldPassowrd()
+    public String getOldPassword()
     {
         return oldPassword;
     }
 
     /**
-     * @return the email
+     * @return the newPassword
      */
     public String getNewPassword()
     {
         return newPassword;
+    }
+
+    public void setOldPassword(String oldPassword) {
+        this.oldPassword = oldPassword;
+    }
+
+    public void setNewPassword(String newPassword) {
+        this.newPassword = newPassword;
     }
 
     public PasswordDTO(String newPwd, String oldPwd)
