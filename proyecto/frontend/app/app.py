@@ -57,11 +57,12 @@ def login():
 
                 user = load_user(json_user['id'])
                 if user is None:
-                    user = User(json_user['id'], json_user['name'], json_user['email'], form.password.data)
+                    user = User(json_user['id'], json_user['name'], json_user['email'], form.password.data, visits=json_user['visits'])
+
+                if not users.__contains__(user):
+                    users.append(user)
                 
-                users.append(user)
                 login_user(user, remember=form.remember_me.data)
-                print('entrando a la función chats')
                 return redirect(url_for('chats'))
 
             if r.status_code == 403:

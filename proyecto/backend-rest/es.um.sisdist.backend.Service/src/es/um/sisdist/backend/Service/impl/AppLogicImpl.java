@@ -134,8 +134,12 @@ public class AppLogicImpl
             System.out.println("applogic: usuario recuperado" + u.get().toString());
             String hashed_pass = UserUtils.md5pass(pass);
             System.out.println("Contraseña recibida (hashed): " + hashed_pass + " \nContraseña almacenada: " + u.get().getPassword_hash());
-            if (0 == hashed_pass.compareTo(u.get().getPassword_hash()))
+            if (0 == hashed_pass.compareTo(u.get().getPassword_hash())){
+                u.get().newVisit();
+                dao.updateUser(u.get());
                 return u;
+
+            }
         }
         System.out.println("applogic: Nose ha encontrado el user para login");
         return Optional.empty();

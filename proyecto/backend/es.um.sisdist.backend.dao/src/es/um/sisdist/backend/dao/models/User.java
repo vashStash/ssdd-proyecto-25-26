@@ -118,6 +118,14 @@ public class User
         this.visits = visits;
     }
 
+    /**
+     * @param visits the visits to set
+     */
+    public void newVisit()
+    {
+        this.visits += 1;
+    }
+
     public User(String email, String password_hash, String name, String tOKEN, int visits)
     {
         this(email, email, password_hash, name, tOKEN, visits);
