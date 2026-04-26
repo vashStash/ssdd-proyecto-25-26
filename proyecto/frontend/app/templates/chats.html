@@ -12,7 +12,7 @@
             <ul class="list-group">
                 {% for chat in chats %}
                     <li class="list-group-item p-0">
-                        <form method="get" action="{{ url_for('mostrar_chat', userid=userid, chatid=chat.id) }}" style="display:inline;">
+                        <form method="get" action="{{ url_for('mostrar_chat', chatid=chat.id) }}" style="display:inline;">
                              <input type="hidden" name="dialogueid" value="{{ chat.id }}">
                              <button type="submit" class="list-group-item list-group-item-action border-0">
                                  {{ chat.name or 'Chat sin nombre' }}
@@ -30,8 +30,20 @@
 
     <div class="main-content">
         {% if chat_seleccionado %}
-            <div class="chat-header">
-                <h3>{{ chat_seleccionado.name }}</h3>
+            <div class="chat-header d-flex justify-content-between align-items-center mb-3">
+                <h3 class="m-0">{{ chat_seleccionado.name }}</h3>
+                
+                {% if chat_seleccionado.status != 'FINISHED' %}
+                    <form action="{{ url_for('end_chat', chatId=chat_seleccionado.id) }}" method="POST" style="margin: 0;">
+                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Seguro que quieres cerrar este chat? Ya no podrás escribir más.');">
+                            <i class="bi bi-x-circle"></i> Terminar Chat
+                        </button>
+                    </form>
+                {% else %}
+                    <span class="badge bg-secondary">
+                        <i class="bi bi-check-circle"></i> Chat Finalizado
+                    </span>
+                {% endif %}
             </div>
 
             <div class="chat-box" id="chatBox">
@@ -98,7 +110,7 @@
 
 <div class="modal fade" id="chatModal" tabindex="-1" aria-labelledby="chatModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form method="post" action="{{ url_for('nuevochat', userid=current_user.id) }}">
+        <form method="post" action="{{ url_for('chats') }}">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="chatModalLabel">Nuevo chat</h5>
@@ -124,21 +136,35 @@ function esperarRespuesta(requestId, dialogueId) {
     const intervalId = setInterval(() => {
         fetch(`/consultar_estado/${dialogueId}/${requestId}`)
             .then(res => {
+
+                if (res.status == 404){
+                    clearInterval(intervalId);
+                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
+                    return null;
+                }
                 if (!res.ok) throw new Error("Error en la respuesta del servidor");
+                
                 return res.json();
             })
             .then(data => {
+                if (!data) return;
+
                 console.log("Estado recibido:", data.status);
 
                 if (data.status === 'READY') {
                 
                     clearInterval(intervalId);
-                    location.reload();
-                } 
+                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
+                }
+                else if (data.status === 'TOKEN INVALIDO') {
+
+                    clearInterval(intervalId);
+                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
+                }
                 else if (data.status === 'ERROR') {
                     clearInterval(intervalId);
                     alert("Error de la IA: " + (data.message || "Desconocido"));
-                    location.reload();
+                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
                 }
                 
             })

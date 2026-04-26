@@ -206,12 +206,29 @@ public class AppLogicImpl
     }
 
     public String crearChat(String userid, String chatName){
+
         Chat chat = new Chat(userid, chatName, ChatStatus.READY, null);
         User user = dao.getUserById(userid).get();
         chatDao.createChat(chat);        
         user.addChat(chat);
         dao.updateUser(user);
         return chat.getId();
+    }
+
+    public boolean finalizarChat(String userid, String chatId) {
+
+
+        Chat chat = chatDao.getChatById(chatId).orElse(null);
+
+        if (chat != null) {
+
+            chat.setStatus(ChatStatus.FINISHED);
+            chatDao.updateChat(chat);
+
+            return true;
+        }
+
+        return false;
     }
 
     public Optional<Chat> getChat(String userid, String chatid){
