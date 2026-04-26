@@ -40,10 +40,11 @@ public class ChatsEndpoint {
     private AppLogicImpl impl = AppLogicImpl.getInstance();
 
     @GET
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     @Path("/chats")
     public Response getChatList(@PathParam("userid") String userid)
     {
+
         Optional<User> u = impl.getUserById(userid);
 
         if(!u.isPresent()){
@@ -58,15 +59,15 @@ public class ChatsEndpoint {
         if (chatlist == null){
             return Response.status(Status.NOT_FOUND).build();
         }
+
         System.out.println("se devolverá " + chatlist.toString());
         return Response.ok(chatlist, MediaType.APPLICATION_JSON).build();
     }
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("/nuevochat")
-    public Response newChat(@PathParam("userid") String userid, String chatname)
+    @Path("/chats")
+    public Response newChat(@Context UriInfo uriInfo, @PathParam("userid") String userid, ChatDTO chatname)
     {
         Optional<User> u = impl.getUserById(userid);
          if(!u.isPresent()){
@@ -75,24 +76,31 @@ public class ChatsEndpoint {
          }
         System.out.println("creando nuevo chat para " + u.get().getName());
 
-        String chatID = impl.crearChat(userid, chatname);
+        String chatNuevo = impl.crearChat(userid, chatname.getName());
 
-        if(chatID == null) return Response.status(Status.NOT_MODIFIED).build();
-        return Response.ok(chatID, MediaType.APPLICATION_JSON).build();
+        if(chatNuevo == null) { 
+            return Response.status(Status.NOT_MODIFIED).build();
+        }
+
+        URI location = uriInfo.getAbsolutePathBuilder()
+                          .path(chatNuevo)
+                          .build();
+
+        return Response.created(location).build();
     }
 
     @GET
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/chat/{chatid}")
+    @Path("/chats/{chatid}")
     public Response getChat(@PathParam("userid") String userid, @PathParam("chatid") String chatid){
       
         Optional<Chat> chat = impl.getChat(userid, chatid);
-        System.out.println("Recibida petición de chat: " + chat.get());
-
+       
         if (chat.isEmpty()) {
             return Response.status(Status.NOT_FOUND).build();
         } else {
+            System.out.println("Recibida petición de chat: " + chat.get());
             System.out.println("devolviendo chat: " + chat.get().toString());
             ChatDTO chatDTO = ChatDTO.toDTO(chat.get());
             for (Conversation conversation : chat.get().getConversation()) {
@@ -101,6 +109,9 @@ public class ChatsEndpoint {
             return Response.ok(chatDTO, MediaType.APPLICATION_JSON).build();
         }
     }
+
+
+
 
 
     @POST

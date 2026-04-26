@@ -182,6 +182,7 @@ public class AppLogicImpl
     }
 
     public String crearChat(String userid, String chatName){
+
         Chat chat = new Chat(userid, chatName, ChatStatus.READY, null);
         User user = dao.getUserById(userid).get();
         chatDao.createChat(chat);        

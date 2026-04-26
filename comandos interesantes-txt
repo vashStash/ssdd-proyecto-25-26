@@ -8,3 +8,12 @@ docker container rm proyecto-db-mongo-1
 para hacer una reseteadita
 docker system prune -a
 docker cpmpose build -f el fichero docker que quieras
+
+Para solucionar el problema en MAC copiar esto en el engine de docker:
+{
+  "insecure-registries": [
+    "hub.docker.com",
+    "registry-1.docker.io",
+    "docker.io"
+  ]
+}

@@ -158,5 +158,6 @@ public class User
 
     public User()
     {
+        this.chatList = new LinkedList<>();
     }
 }
