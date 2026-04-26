@@ -46,7 +46,7 @@ public class ChatsEndpoint {
     {
 
         Optional<User> u = impl.getUserById(userid);
-
+        
         if(!u.isPresent()){
             System.out.println("getChatList: Usuario no encontrado: " + userid);
             return Response.status(Status.NOT_FOUND).build();
@@ -61,6 +61,7 @@ public class ChatsEndpoint {
         }
 
         System.out.println("se devolverá " + chatlist.toString());
+        // System.out.println("se devolverá " + chatlist.toString());
         return Response.ok(chatlist, MediaType.APPLICATION_JSON).build();
     }
 
