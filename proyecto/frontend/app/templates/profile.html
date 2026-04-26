@@ -34,11 +34,43 @@
         <hr>
 
         <!-- Botón cambiar contraseña -->
-        <form method="POST" action="{{ url_for('cambiar_password') }}">
-            <button type="submit" class="btn btn-danger w-100">
-                Cambiar contraseña
-            </button>
-        </form>
-
+        <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#pwdModal">
+            Cambiar contraseña
+        </button>
+        {% if pwd_msg %}
+            <br>
+            <h1>{{pwd_msg}}</h1>
+        {% endif %}
+    </div>
 </h1>
+
+<div class="modal fade" id="pwdModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" action="{{ url_for('cambiar_pwd', userid=current_user.id) }}">
+            {{ form.hidden_tag() }}
+            
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>Cambiar contraseña</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                
+                <div class="modal-body">
+                    <label>Contraseña antigua</label>
+                    <input type="password" name="oldPassword" class="form-control" required>
+                </div>
+                
+                <div class="modal-body">
+                    <label>Contraseña nueva</label>
+                    <input type="password" name="newPassword" class="form-control" required>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Cambiar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}

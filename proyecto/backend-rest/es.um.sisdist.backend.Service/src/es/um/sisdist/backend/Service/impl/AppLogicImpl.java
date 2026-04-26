@@ -20,6 +20,7 @@ import es.um.sisdist.backend.grpc.TicketRequest;
 import es.um.sisdist.backend.grpc.PromptResponse;
 import es.um.sisdist.models.ChatDTO;
 import es.um.sisdist.models.ConversationDTO;
+import es.um.sisdist.models.PasswordDTO;
 import es.um.sisdist.models.ResultadoEnvioLlama;
 import es.um.sisdist.models.ChatDTO;
 import es.um.sisdist.models.UserDTO;
@@ -133,8 +134,12 @@ public class AppLogicImpl
             System.out.println("applogic: usuario recuperado" + u.get().toString());
             String hashed_pass = UserUtils.md5pass(pass);
             System.out.println("Contraseña recibida (hashed): " + hashed_pass + " \nContraseña almacenada: " + u.get().getPassword_hash());
-            if (0 == hashed_pass.compareTo(u.get().getPassword_hash()))
+            if (0 == hashed_pass.compareTo(u.get().getPassword_hash())){
+                u.get().newVisit();
+                dao.updateUser(u.get());
                 return u;
+
+            }
         }
         System.out.println("applogic: Nose ha encontrado el user para login");
         return Optional.empty();
@@ -192,8 +197,21 @@ public class AppLogicImpl
         else return 0;
     }
 
-    public boolean updatePwd(User user, String newpwd){
-        return true;
+    public int updatePwd(String userid, PasswordDTO pwdDTO){
+        Optional<User> u = dao.getUserById(userid);
+
+        // return 1: not found
+        if(!u.isPresent())   return 1;
+        User user = u.get();
+
+        // return 2: old password doesn't match
+        if(!user.getPassword_hash().equals(UserUtils.md5pass(pwdDTO.getOldPassword()))) return 2;
+
+        user.setPassword_hash(UserUtils.md5pass(pwdDTO.getNewPassword()));
+
+        // return 3: error updating password
+        if(!dao.updateUser(user)) return 3;
+        else return 0;
     }
     //////////////////////// CHATS /////////////////////
     

@@ -15,10 +15,10 @@ class User(UserMixin):
         self.visits = visits
 
     def set_password(self, password):
-        self.password = hashlib.sha256(password).hexdigest()
+        self.password = hashlib.sha256(password.encode('utf8')).hexdigest()
 
     def check_password(self, password):
-        return self.password == hashlib.sha256(password).hexdigest()
+        return self.password == hashlib.sha256(password.encode('utf8')).hexdigest()
 
     def get_user(email):
         for user in users:
@@ -31,6 +31,9 @@ class User(UserMixin):
 
     def __repr__(self):
         return '<User {}>'.format(self.email)
+    
+    def hashPassword(password):
+        return hashlib.sha256(password.encode('utf8')).hexdigest()
 
 
 class Chat():

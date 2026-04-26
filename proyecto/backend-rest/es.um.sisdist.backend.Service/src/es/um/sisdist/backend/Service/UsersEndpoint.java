@@ -1,11 +1,17 @@
 package es.um.sisdist.backend.Service;
 
+import static com.mongodb.client.model.Filters.jsonSchema;
+
 import java.util.Optional;
 
 import javax.print.attribute.standard.Media;
 
+import org.bson.conversions.Bson;
+
 import es.um.sisdist.backend.Service.impl.AppLogicImpl;
 import es.um.sisdist.backend.dao.models.User;
+import es.um.sisdist.backend.dao.models.utils.UserUtils;
+import es.um.sisdist.models.PasswordDTO;
 import es.um.sisdist.models.UserDTO;
 import es.um.sisdist.models.UserDTOUtils;
 import jakarta.ws.rs.Consumes;
@@ -62,60 +68,22 @@ public class UsersEndpoint
     @Path("/{userid}/cambiar_password")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    // TODO implementar lógica de contrasenas
-    public Response cambiarPassword(@PathParam("userid") String userid, String newpwd){
-        Optional<User> user = impl.getUserById(userid);
-
-        if(!user.isPresent()){
+    public Response cambiarPassword(@PathParam("userid") String userid, PasswordDTO pwdDTO){
+        int res = impl.updatePwd(userid, pwdDTO);
+        System.out.println("cambiar_password recibió " + pwdDTO.getOldPassword() +" y " + pwdDTO.getNewPassword() + " para el user " + userid);
+        System.out.println("res es " + res);
+        if(res == 1){
+            // res == 1 -> user not found
             System.out.println("getChatList: Usuario no encontrado: " + userid);
             return Response.status(Status.NOT_FOUND).build();
-        } else {
-            System.out.println("recuperando chats de: " + user.get().getName());
         }
-
-        if(impl.updatePwd(user.get(), newpwd)){
+        else if(res == 2 ){ 
+            // res == 2 -> old password doesn't match   
             return Response.status(Status.NOT_ACCEPTABLE).build();
         }
-        else return Response.status(Status.OK).build();
-    }
-
-    @POST
-    @Path("/{username}/profile/cambiar_nombre")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response cambiarNombre(@PathParam("userid") String userid, String newUsername){
-        Optional<User> user = impl.getUserById(userid);
-
-        if(!user.isPresent()){
-            System.out.println("getChatList: Usuario no encontrado: " + userid);
-            return Response.status(Status.NOT_FOUND).build();
-        } else {
-            System.out.println("recuperando chats de: " + user.get().getName());
-        }
-
-        // no se si esto es correcto hacerlo aquí o mejor en el impl
-        user.get().setName(newUsername);
-
-        if(impl.updateUser(user.get(), newUsername)){
-            return Response.status(Status.NOT_ACCEPTABLE).build();
-        }
-        else return Response.status(Status.OK).build();
-    }
-
-    @POST
-    @Path("/{username}/profile/cambiar_password")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response cambiarPassword(@PathParam("userid") String userid, String newpwd){
-        Optional<User> user = impl.getUserById(userid);
-
-        if(!user.isPresent()){
-            System.out.println("getChatList: Usuario no encontrado: " + userid);
-            return Response.status(Status.NOT_FOUND).build();
-        } else {
-            System.out.println("recuperando chats de: " + user.get().getName());
-        }
-
-        if(impl.updateUser(user.get(), newpwd)){
-            return Response.status(Status.NOT_ACCEPTABLE).build();
+        else if(res == 3){
+            // res == 3 -> mongo error
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         else return Response.status(Status.OK).build();
     }
