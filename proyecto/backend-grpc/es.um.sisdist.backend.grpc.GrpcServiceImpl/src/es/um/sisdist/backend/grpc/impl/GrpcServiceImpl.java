@@ -81,7 +81,13 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		//
 
 		HttpClient client = HttpClient.newHttpClient();
-		String jsonBody = "{\"prompt\": \"" + userPrompt + "\"}";
+		
+		String promptParseado = userPrompt.replace("\\", "\\\\")
+                                          .replace("\"", "\\\"")
+                                          .replace("\n", "\\n")
+                                          .replace("\r", "\\r");
+
+		String jsonBody = "{\"prompt\": \"" + promptParseado + "\"}";
 		
 		// Intentamos enviar la petición de un nuevo prompt al servidor Llama:
 
@@ -90,15 +96,18 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		.header("Content-Type", "application/json")
 		.POST(HttpRequest.BodyPublishers.ofString(jsonBody))
 		.build();
-
+		
 		HttpResponse<String> promptResponse;
 		try {
 			// Comprobamos si el servicio Llama está disponible.
 			healthCheck();
 			promptResponse = client.send(promptRequest, HttpResponse.BodyHandlers.ofString());
+			
 		} catch (IOException | InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			responseObserver.onNext(TicketResponse.newBuilder().setStatus("ERROR").build());
+        	responseObserver.onCompleted();
 			return;
 		}
 
@@ -124,7 +133,7 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		// Todo ha ido bien y el nuevo prompt ha sido aceptado dandonos el nuevo ticket:
 		if (promptStatus == 202) {
 
-			String localizacion = promptResponse.headers().firstValue("Location").toString();
+			String localizacion = promptResponse.headers().firstValue("Location").orElse("");
 			String ticket = localizacion.substring(localizacion.lastIndexOf("/") + 1);
 
 			responseObserver.onNext(TicketResponse.newBuilder().setStatus(String.valueOf("ACEPTADO")).setTicketResponse(ticket).build());
@@ -133,6 +142,7 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		}
 
 		// En caso de llegar aquí, cerramos el flujo.
+		responseObserver.onNext(TicketResponse.newBuilder().setStatus("ERROR").build());
 		responseObserver.onCompleted();
 	}
 
@@ -141,9 +151,7 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 	{
 		String id_user = request.getIdUser();
 		String ticket = request.getTicketRequest();
-		if (ticket != null) {
-			ticket = ticket.replace("]", "").replace("[", "").trim();
-		}
+		
 		// Se comprueban el JWT del usuario, etc.
 
 
@@ -160,7 +168,6 @@ class GrpcServiceImpl extends GrpcServiceGrpc.GrpcServiceImplBase
 		try {
 			healthCheck();
 			consultaTicketResponse = client.send(consultaTicketRequest, HttpResponse.BodyHandlers.ofString());
-		
 		
 			int statusConsulta = consultaTicketResponse.statusCode();
 

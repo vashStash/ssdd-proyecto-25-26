@@ -237,13 +237,13 @@ public class AppLogicImpl
 
 
         Chat chat = chatDao.getChatById(chatId).orElse(null);
-
-        if (chat != null) {
-
+        
+        if (chat != null && chat.getUser_id().equals(userid) && chat.getStatus() == ChatStatus.READY) {
+        
             chat.setStatus(ChatStatus.FINISHED);
             chatDao.updateChat(chat);
-
             return true;
+
         }
 
         return false;
@@ -279,17 +279,16 @@ public class AppLogicImpl
 
     //Enviamos la solicitud para recibir un Token:
 
-    public ResultadoEnvioLlama enviarPromptLlama(String userId, String dialogueId, String token, String prompt) {
+    public ResultadoEnvioLlama enviarPromptLlama(String userId, String chatId, String token, String prompt, long timestamp) {
         
-        Chat chat = chatDao.getChatById(dialogueId).orElse(null);
+        Chat chat = chatDao.getChatById(chatId).orElse(null);
         
         if (chat == null || !chat.getUser_id().equals(userId)) {
 
             return new ResultadoEnvioLlama("ERROR", "Chat no encontrado");
         }
 
-
-        if (token != null && !token.equals(chat.getNextToken())) {
+        if (token == null || !token.equals(chat.getNextToken())) {
             return new ResultadoEnvioLlama("TOKEN_INVALIDO", null);
         }
 
@@ -297,10 +296,13 @@ public class AppLogicImpl
             return new ResultadoEnvioLlama("BUSY", null);
         }
 
+        if (chat.getStatus() == ChatStatus.FINISHED) {
+            return new ResultadoEnvioLlama("FINISHED", null);
+        }
+
         try {
         
-            Conversation nuevoMensaje = new Conversation(UUID.randomUUID().toString(), dialogueId, prompt, "");
-            nuevoMensaje.setCreationDate(new java.util.Date());
+            Conversation nuevoMensaje = new Conversation(UUID.randomUUID().toString(), chatId, prompt, "", timestamp);
             chat.addConversation(nuevoMensaje);
             chat.setStatus(ChatStatus.BUSY);
             chat.setNextToken(null);
@@ -323,15 +325,14 @@ public class AppLogicImpl
         }
     }
 
-    public ChatDTO consultarRespuestaLlama(String userId, String dialogueId, String ticket) {
+    public ChatDTO consultarRespuestaLlama(String userId, String chatId, String ticket) {
         
-        Chat chat = chatDao.getChatById(dialogueId).orElse(null);
+        Chat chat = chatDao.getChatById(chatId).orElse(null);
         if (chat == null) return null;
-        System.out.println("Otra vez toca reinicio?");
-        String ticketLimpio = (ticket != null) ? ticket.replace("]", "").replace("[", "").trim() : "";
+        
         try {
             
-            TicketRequest request = TicketRequest.newBuilder().setTicketRequest(ticketLimpio)
+            TicketRequest request = TicketRequest.newBuilder().setTicketRequest(ticket)
                     .build();
 
             PromptResponse response = blockingStub.consultaTicket(request);
@@ -341,17 +342,23 @@ public class AppLogicImpl
                 if (!convs.isEmpty()) {
                     Conversation ultima = convs.get(convs.size() - 1);
                     ultima.setAnswer(response.getResponse());
-                    ultima.setAnswerDate(new java.util.Date());
                     chat.setNextToken(UUID.randomUUID().toString());
                     chat.setStatus(ChatStatus.READY);
                     chatDao.updateChat(chat);
                 }
+            } else if ("TOKEN INVALIDO".equals(response.getStatus()) || "ERROR".equals(response.getStatus())) {
+            
+                chat.setStatus(ChatStatus.READY); 
+            
+                // Se genera un nuevo token de SEGURIDAD de nuestra DB, y permitimos que por lo menos pueda volver a enviar otro prompt.
+                chat.setNextToken(UUID.randomUUID().toString()); 
+                chatDao.updateChat(chat);
             }
         } catch (Exception e) {
             logger.severe("Error consultando ticket gRPC: " + e.getMessage());
         }
-            ChatDTO dto = ChatDTO.toDTO(chat);
-            return dto;
+            return ChatDTO.toDTO(chat);
+            
     }       
 
     

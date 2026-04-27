@@ -23,9 +23,7 @@ public class Chat {
     
     private Date creationDate; // no cambia, es la fecha de creación de la conversación
     private Date lastUpdateDate; // cambia, es la fecha de la última actualización de la conversación
-    
-    private String nextToken; 
-    private String endUrl; 
+    private String nextToken;  
     
     public Chat(String id, String user_id, String name, ChatStatus status, List<Conversation> conversation) {
         this.id = id;
@@ -125,14 +123,6 @@ public class Chat {
     public void addConversation(Conversation conversation){
         this.conversation.add(conversation);
     }
-    
-    public String getEndUrl() {
-        return endUrl;
-    }
-    
-    public void setEndUrl(String endUrl) {
-        this.endUrl = endUrl;
-    }
 
     @Override
     public String toString() {
@@ -145,7 +135,6 @@ public class Chat {
                 ", creationDate=" + creationDate +
                 ", lastUpdateDate=" + lastUpdateDate +
                 ", nextToken='" + nextToken + '\'' +
-                ", endUrl='" + endUrl + '\'' +
                 '}';
     }   
 }

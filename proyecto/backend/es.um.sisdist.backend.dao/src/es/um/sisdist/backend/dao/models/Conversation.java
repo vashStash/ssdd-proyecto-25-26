@@ -10,33 +10,26 @@ import es.um.sisdist.backend.dao.models.utils.DateUtils;
 
 public class Conversation {
 
-    @BsonId
+   
     private String id;
-    @BsonProperty(value="chat_id")
     private String chat_id;
-    @BsonProperty("prompt")
     private String prompt;
-    @BsonProperty("creationDate")
-    private Date creationDate;
-    @BsonProperty("answer")
+    private long timestamp;
     private String answer;
-    @BsonProperty("answerDate")
-    private Date answerDate;
     
 
     public Conversation() {}
 
-    public Conversation(String id, String chat_id, String prompt, String answer, Date creationDate, Date ansDate){
+    public Conversation(String id, String chat_id, String prompt, String answer, long timestamp){
         this.id = id;
         this.chat_id = chat_id;
         this.prompt = prompt;
         this.answer = answer;
-        this.creationDate = creationDate;
-        this.answerDate = ansDate;
+        this.timestamp = timestamp;
     }
 
     public Conversation(String id, String chat_id, String prompt, String answer) {
-        this(id, chat_id, prompt, answer, DateUtils.getCurrentDateISO(), null);
+        this(id, chat_id, prompt, answer, System.currentTimeMillis());
     }
 
     /**
@@ -80,14 +73,14 @@ public class Conversation {
     /**
      * @return the creationDate
      */
-    public Date getCreationDate() {
-        return creationDate;
+    public long getTimestamp() {
+        return timestamp;
     }
     /**
      * @param creationDate the creationDate to set
      */
-    public void setCreationDate(final Date creationDate) {
-        this.creationDate = creationDate;
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 
     /**
@@ -105,16 +98,6 @@ public class Conversation {
     /**
      * @return the answerDate
      */
-    public Date getAnswerDate() {
-        return answerDate;
-    }
-
-    /**
-     * @param answerDate the answerDate to set
-     */
-    public void setAnswerDate(final Date answerDate) {
-        this.answerDate = answerDate;
-    }
     
     @Override
     public String toString() {
@@ -122,9 +105,8 @@ public class Conversation {
                 "id='" + id + '\'' +
                 ", chat_id='" + chat_id + '\'' +
                 ", prompt='" + prompt + '\'' +
-                ", creationDate=" + creationDate +
+                ", creationDate=" + timestamp +
                 ", answer='" + answer + '\'' +
-                ", answerDate=" + answerDate +
                 '}';
     }
 }

@@ -13,7 +13,6 @@
                 {% for chat in chats %}
                     <li class="list-group-item p-0">
                         <form method="get" action="{{ url_for('mostrar_chat', chatid=chat.id) }}" style="display:inline;">
-                             <input type="hidden" name="dialogueid" value="{{ chat.id }}">
                              <button type="submit" class="list-group-item list-group-item-action border-0">
                                  {{ chat.name or 'Chat sin nombre' }}
                              </button>
@@ -33,9 +32,13 @@
             <div class="chat-header d-flex justify-content-between align-items-center mb-3">
                 <h3 class="m-0">{{ chat_seleccionado.name }}</h3>
                 
-                {% if chat_seleccionado.status != 'FINISHED' %}
-                    <form action="{{ url_for('end_chat', chatId=chat_seleccionado.id) }}" method="POST" style="margin: 0;">
-                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Seguro que quieres cerrar este chat? Ya no podrás escribir más.');">
+               {% if chat_seleccionado.status != 'FINISHED' %}
+                    <form action="{{ url_for('end_chat', chatid=chat_seleccionado.id) }}" method="POST" style="margin: 0;">
+                        <input type="hidden" name="end_url_path" value="{{ chat_seleccionado.end }}">
+                        
+                        <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                onclick="return confirm('¿Seguro que quieres cerrar este chat? Ya no podrás escribir más.');"
+                                {% if chat_seleccionado.status != 'READY' %} disabled {% endif %}>
                             <i class="bi bi-x-circle"></i> Terminar Chat
                         </button>
                     </form>
@@ -67,9 +70,8 @@
                 {% endif %}
             </div>
 
-            <form method="post" action="{{ url_for('next') }}" id="sendForm">
-                <input type="hidden" name="dialogueid" value="{{ chat_seleccionado.id }}">
-                <input type="hidden" name="next_token" id="next_token_input" value="{{ chat_seleccionado.nextUrl }}">
+            <form method="post" action="{{ url_for('next', chatid=chat_seleccionado.id) }}" id="sendForm">
+                <input type="hidden" name="next_url_path" id="next_token_input" value="{{ chat_seleccionado.next }}">
                 
                 <div class="input-group mt-3">
                     <input type="text" name="prompt" id="promptInput" class="form-control" placeholder="Escribe tu mensaje..." required 
@@ -81,18 +83,24 @@
                 </div>
             </form>
 
-            {% if request_id %}
+            {% if request_id or chat_seleccionado.status == 'BUSY' %}
                 <div id="pollingAlert" class="alert alert-info mt-3" role="alert">
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                     Llama está pensando... por favor espera.
                 </div>
 
-                <script>
-                    
+             <script>
                     document.addEventListener("DOMContentLoaded", function() {
-                        esperarRespuesta("{{ request_id }}", "{{ chat_seleccionado.id }}");
+                        
+                        const requestId = "{{ request_id if request_id else '' }}";
+                        const chatId = "{{ chat_seleccionado.id if chat_seleccionado else '' }}";
+
+                       
+                        if (requestId !== "" && chatId !== "") {
+                            esperarRespuesta(requestId, chatId);
+                        }
                     });
-                </script>
+            </script>
             {% endif %}
 
         {% else %}
@@ -130,49 +138,73 @@
 </div>
 
 <script>
-function esperarRespuesta(requestId, dialogueId) {
-    console.log("Iniciando polling para ticket: ", requestId);
-    
-    const intervalId = setInterval(() => {
-        fetch(`/consultar_estado/${dialogueId}/${requestId}`)
-            .then(res => {
 
-                if (res.status == 404){
-                    clearInterval(intervalId);
-                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
-                    return null;
+function scrollToBottom() {
+    const chatBox = document.getElementById('chatBox');
+    // El 'if' comprueba si el elemento existe en la página actual
+    if (chatBox) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+}
+
+
+function esperarRespuesta(requestId, chatId) {
+    // Evitar duplicados: si ya hay un intervalo para este chat, no hacer nada
+    if (window.activePolling === requestId) return;
+    window.activePolling = requestId;
+
+    console.log("Iniciando polling para ticket:", requestId);
+    localStorage.setItem(`pending_ticket_${chatId}`, requestId);
+
+    const intervalId = setInterval(() => {
+        fetch(`/consultar_estado/${chatId}/${requestId}`)
+            .then(res => {
+                // Si el servidor responde con error grave, paramos
+                if (res.status === 404 || res.status === 500) {
+                    throw new Error("Servidor no disponible");
                 }
-                if (!res.ok) throw new Error("Error en la respuesta del servidor");
-                
                 return res.json();
             })
             .then(data => {
                 if (!data) return;
+                console.log("Estado:", data.status);
 
-                console.log("Estado recibido:", data.status);
-
-                if (data.status === 'READY') {
-                
+                // Si terminó (READY) o hubo error controlado, limpiamos y recargamos
+                if (data.status === 'READY' || data.status === 'ERROR' || data.status === 'TOKEN INVALIDO') {
+                    if (data.status === 'ERROR') alert("Error de la IA: " + (data.message || "Desconocido"));
+                    
+                    localStorage.removeItem(`pending_ticket_${chatId}`);
                     clearInterval(intervalId);
-                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
+                    window.location.href = `/chats/${chatId}`;
                 }
-                else if (data.status === 'TOKEN INVALIDO') {
-
-                    clearInterval(intervalId);
-                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
-                }
-                else if (data.status === 'ERROR') {
-                    clearInterval(intervalId);
-                    alert("Error de la IA: " + (data.message || "Desconocido"));
-                    window.location.href = `/u/{{ userid }}/chats/${dialogueId}`;
-                }
-                
             })
             .catch(error => {
-                console.error("Error al hacer polling:", error);
+                console.error("Error en polling:", error);
+                // No recargamos aquí para permitir reintentos si es un fallo de red temporal
             });
-    }, 2000); // Consultar cada 2 segundos
+    }, 2000);
 }
+
+document.addEventListener("DOMContentLoaded", function() {
+    scrollToBottom();
+    const chatId = "{{ chat_seleccionado.id if chat_seleccionado else '' }}";
+    const status = "{{ chat_seleccionado.status if chat_seleccionado else '' }}";
+    const flaskTicket = "{{ request_id if request_id else '' }}";
+    
+    if (chatId) {
+        const savedTicket = localStorage.getItem(`pending_ticket_${chatId}`);
+        // Prioridad: 1. Ticket que acaba de llegar | 2. Ticket guardado
+        const ticketAActivar = flaskTicket || savedTicket;
+
+        // Si el estado es BUSY, necesitamos un ticket para preguntar
+        if (status === 'BUSY' && ticketAActivar) {
+            esperarRespuesta(ticketAActivar, chatId);
+        } else if (status === 'READY') {
+            // Si el chat ya está READY, nos aseguramos de limpiar tickets viejos
+            localStorage.removeItem(`pending_ticket_${chatId}`);
+        }
+    }
+});
 </script>
 
 {% endblock %}
