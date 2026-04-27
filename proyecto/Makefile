@@ -28,4 +28,8 @@ clean:
 		$(MAKE) -C $$i $@; \
 	done
 
+clean-backend:
+	docker container rm proyecto-backend-rest-1
+	docker image rm proyecto-backend-rest
+
 .PHONY: all run-devel containers frontend backend backend-grpc backend-rest clean
