@@ -85,7 +85,7 @@ public class ChatsEndpoint {
         URI location = uriInfo.getAbsolutePathBuilder()
                           .path(chatNuevo)
                           .build();
-
+                          
         return Response.created(location).build();
     }
 
@@ -110,29 +110,31 @@ public class ChatsEndpoint {
         }
     }
 
-
-
-
-
     @POST
-    @Path("/dialogue/{dialogueId}/next/{token : (.*)}")
+    @Path("/chats/{chatid}/next/{token}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response enviarPrompt (@PathParam("userid") String userId, @PathParam("dialogueId") String dialogueId, @PathParam("token") String token, ConversationDTO input, @Context UriInfo uriInfo){
+    public Response enviarPrompt (@PathParam("userid") String userId, @PathParam("chatid") String chatId, @PathParam("token") String token, ConversationDTO input, @Context UriInfo uriInfo){
         System.out.println("Entra para pedir al token");
-        String tokenTratado = (token == null || token.isEmpty()) ? null : token;
+        
+        if (token == null || token.isEmpty()) {
+            return Response.status(Response.Status.FORBIDDEN).build();
+        }
 
-        ResultadoEnvioLlama resLlama = impl.enviarPromptLlama(userId, dialogueId, tokenTratado, input.getPrompt());
+        ResultadoEnvioLlama resLlama = impl.enviarPromptLlama(userId, chatId, token, input.getPrompt(), input.getTimestamp());
         System.out.println("Vuelve de la llamada a grpc");
+
         if ("ACEPTADO".equals(resLlama.getEstado())) {
-            
+
             URI location = uriInfo.getBaseUriBuilder()
                 .path("u").path(userId)
-                .path("dialogue").path(dialogueId)
-                .queryParam("t", resLlama.getRespuesta())
+                .path("chats").path(chatId)
+                .path("dialogue")
+                .path(resLlama.getRespuesta())
                 .build();
+
                 System.out.println("Este es el token recibido " + resLlama.getRespuesta());
 
-            return Response.status(Response.Status.ACCEPTED)
+            return Response.status(Response.Status.CREATED)
                         .location(location)
                         .build();
         }
@@ -141,7 +143,7 @@ public class ChatsEndpoint {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
 
-        if ("BUSY".equals(resLlama.getEstado())) {
+        if ("BUSY".equals(resLlama.getEstado()) || "FINISHED".equals(resLlama.getEstado())) {
            
             return Response.status(Response.Status.NO_CONTENT)
                         .build();
@@ -163,26 +165,26 @@ public class ChatsEndpoint {
     }
 
     @GET
-    @Path("/dialogue/{dialogueId}")
+    @Path("/chats/{chatid}/dialogue/{ticketid}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response consultarEstado(@PathParam("userid") String userId, @PathParam("dialogueId") String dialogueId, @QueryParam("t") String ticket) { 
-        System.out.println("Lo consulta de verdad el token");
+    public Response consultarEstado(@PathParam("userid") String userId, @PathParam("chatid") String chatId, @PathParam("ticketid") String ticket) { 
+       
         if (ticket == null || ticket.isEmpty()) {
             return Response.status(Response.Status.BAD_REQUEST)
                         .entity("{\"error\":\"Falta el token de seguimiento\"}")
                         .build();
         }
 
-        ChatDTO resultado = impl.consultarRespuestaLlama(userId, dialogueId, ticket);
+        ChatDTO resultado = impl.consultarRespuestaLlama(userId, chatId, ticket);
 
         if (resultado == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
 
-        if (resultado.getStatus() == ChatStatus.READY) {
+        if (resultado.getStatus() == ChatStatus.READY || resultado.getStatus() == ChatStatus.FINISHED) {
         
             return Response.ok(resultado).build();
-            
+    
         } else {
         
             return Response.status(Response.Status.ACCEPTED).build();
@@ -190,9 +192,7 @@ public class ChatsEndpoint {
     }
 
     @POST
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("/chat/{chatId}/end")
+    @Path("/chats/{chatId}/end")
     public Response finalizarChat(@PathParam("userid") String userid, @PathParam("chatId") String chatid){
       
         boolean resultado = impl.finalizarChat(userid, chatid);
@@ -202,7 +202,7 @@ public class ChatsEndpoint {
             return Response.ok().build();
         } 
 
-        return Response.status(Response.Status.NOT_FOUND).build();
+        return Response.status(Response.Status.BAD_REQUEST).build();
     }
    
 

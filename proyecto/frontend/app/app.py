@@ -234,39 +234,39 @@ def mostrar_chat(chatid):
         chats=chatlist_json, chat_seleccionado=chat_seleccionado
     )
     
-@app.route('/next', methods=['POST'])
+@app.route('/chats/<chatid>/next', methods=['POST'])
 @login_required
-def next():
+def next(chatid):
     
-    dialogueid = request.form.get('dialogueid')
-    user_prompt = request.form.get('prompt')
     userid = current_user.id
+    user_prompt = request.form.get('prompt')
 
-    next_token = request.form.get('next_token', '').strip()
-
-    if not dialogueid or not user_prompt:
+    # Se obtiene la URL de next apartir del JSON del chat
+    next_url_path = request.form.get('next_url_path')
+    
+    if not chatid or not user_prompt:
         flash("Error: No se ha seleccionado un chat o el mensaje está vacío.")
         print("No esta recibiendo el prompt")
-        return redirect(url_for('chats'))
+        return redirect(url_for('mostrar_chat', chatid=chatid))
 
+    timestamp = int(time.time())
     datos = {
-        "prompt": user_prompt
+        "prompt": user_prompt,
+        "timestamp": timestamp
     }
-    print("Entra a la peticion")
 
-    query_url = f'http://backend-rest:8080/Service/u/{userid}/dialogue/{dialogueid}/next/{next_token}'
+    backend_base = "http://backend-rest:8080/Service"
+    query_url = f"{backend_base}{next_url_path}"
     request_id = None
     
     try:
         r = requests.post(query_url, json=datos, allow_redirects=False)
         print("DEBUG: Entra al try del next")
-        if r.status_code in [201, 202]:    # ACCEPTED
-            print("DEBUG: Peticion aceptada")
-            location_url = r.headers.get('Location')
-            if location_url and 't=' in location_url:
-                request_id = location_url.split('t=')[-1].replace(']', '').replace('[', '').strip()
 
-                print("DEBUG: Ticket capturado con éxito -> {request_id}")
+        if r.status_code == 201:
+            location_url = r.headers.get('Location')
+            if location_url:
+                request_id = location_url.split('/')[-1].strip()
 
         elif r.status_code == 204:  # BUSY
             flash("La IA está ocupada procesando otro mensaje. Espera un momento.")
@@ -275,12 +275,13 @@ def next():
 
     except Exception as e:
         print(f"Error en el flujo: {e}")
-        return redirect(url_for('chats'))
+        return redirect(url_for('mostrar_chat', chatid=chatid))
  
+    # Se mantiene esto para poder hacer el polling de manera automática
     r_chats = requests.get(f'http://backend-rest:8080/Service/u/{userid}/chats')
     lista_chats = r_chats.json() if r_chats.ok else []
 
-    r_chat = requests.get(f'http://backend-rest:8080/Service/u/{userid}/chat/{dialogueid}')
+    r_chat = requests.get(f'http://backend-rest:8080/Service/u/{userid}/chats/{chatid}')
     chat_actual = r_chat.json() if r_chat.ok else None
 
     return render_template('chats.html', 
@@ -289,14 +290,13 @@ def next():
                                userid=userid,
                                request_id=request_id)
     
-@app.route('/consultar_estado/<dialogueid>/<request_id>')
+@app.route('/consultar_estado/<chatid>/<request_id>')
 @login_required
-def consultar_estado(dialogueid, request_id):
+def consultar_estado(chatid, request_id):
     userid = current_user.id
     print("Empieza a consultar el estado")
-    token_limpio = request_id.replace(']', '').replace('[', '').strip()
     print(request_id)
-    query_url = f'http://backend-rest:8080/Service/u/{userid}/dialogue/{dialogueid}?t={token_limpio}'
+    query_url = f'http://backend-rest:8080/Service/u/{userid}/chats/{chatid}/dialogue/{request_id}'
     
     try:
         r = requests.get(query_url)
@@ -331,18 +331,24 @@ def consultar_estado(dialogueid, request_id):
         return jsonify({"status": "ERROR", "message": "Error de conexión"}), 500
 
 
-@app.route('/end/<chatId>', methods=['POST'])
+@app.route('/chats/<chatid>/end', methods=['POST'])
 @login_required
-def end_chat(chatId):
+def end_chat(chatid):
 
     userid = current_user.id
-    query_url = f'http://backend-rest:8080/Service/u/{userid}/chat/{chatId}/end'
+    end_url_path = request.form.get('end_url_path')
+
+    if not end_url_path:
+        flash("Error: No se ha recibido la ruta para finalizar el chat.", "danger")
+        return redirect(url_for('mostrar_chat', chatid=chatid))
+
+    backend_base = "http://backend-rest:8080/Service"
+    query_url = f"{backend_base}{end_url_path}"
 
     try:
 
         r = requests.post(query_url)
-
-        if r.status == 200:
+        if r.status_code == 200:
             flash('El chat ha finalizado correctamente', "success")
         elif r.status_code == 404:
             flash("No se encuentra el chat para finalizarlo", "warning")
@@ -353,7 +359,7 @@ def end_chat(chatId):
         print(f"Error al conectar con Java para finalizar chat: {e}")
         flash("Error de conexión con el servidor backend.", "danger")   
 
-    return redirect(url_for('chats'))
+    return redirect(url_for('mostrar_chat', chatid=chatid))
 
 
 

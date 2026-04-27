@@ -9,18 +9,16 @@ public class ConversationDTO {
     private String conversationId;
     private String prompt;
     private String answer;
-    private Date creationDate;
-    private Date answerDate;
+    private long timestamp;
 
     public ConversationDTO() {
     }
     
-    public ConversationDTO(String conversationId, String prompt, String answer, Date creationDate, Date answerDate) {
+    public ConversationDTO(String conversationId, String prompt, String answer, long timestamp) {
         this.conversationId = conversationId;
         this.prompt = prompt;
         this.answer = answer;
-        this.creationDate = creationDate;
-        this.answerDate = answerDate;
+        this.timestamp = timestamp;
     }
 
     // Getters y Setters
@@ -48,21 +46,14 @@ public class ConversationDTO {
         this.answer = answer;
     }
 
-    public Date getCreationDate() {
-        return creationDate;
+    public long getTimestamp() {
+        return timestamp;
     }
 
-    public void setCreationDate(Date creationDate) {
-        this.creationDate = creationDate;
+    public void setCreationDate(long timestamp) {
+        this.timestamp = timestamp;
     }
 
-    public Date getAnswerDate() {
-        return answerDate;
-    }
-
-    public void setAnswerDate(Date answerDate) {
-        this.answerDate = answerDate;
-    }
 
     public static ConversationDTO toDTO(Conversation conver) {
         if (conver == null) {
@@ -72,14 +63,13 @@ public class ConversationDTO {
             conver.getId(), 
             conver.getPrompt(), 
             conver.getAnswer(), 
-            conver.getCreationDate(), 
-            conver.getAnswerDate()
+            conver.getTimestamp()
         );
     }
 
     @Override
     public String toString() {
         return "ConversationDTO [conversationId=" + conversationId + ", prompt=" + prompt + ", answer=" + answer
-                + ", creationDate=" + creationDate + ", answerDate=" + answerDate + "]";
+                + ", creationDate=" + timestamp + ", answerDate=" + "]";
     }
 }

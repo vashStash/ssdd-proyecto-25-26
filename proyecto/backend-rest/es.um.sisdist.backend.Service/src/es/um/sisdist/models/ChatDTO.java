@@ -13,15 +13,15 @@ public class ChatDTO {
 
     private String id;
     private String name;
-    private String nextUrl;
+    private String next;
+    private String end;
     private ChatStatus status;
-
     private List<ConversationDTO> conversation;
     
     public ChatDTO(String id, String name, String next, ChatStatus status){
         this.id = id;
         this.name = name;
-        this.nextUrl = next;
+        this.next = next;
         this.status = status;
         this.conversation = new LinkedList<>();
     }
@@ -42,12 +42,20 @@ public class ChatDTO {
         this.name = name;
     }
 
-    public String getNextUrl() {
-        return nextUrl;
+    public String getNext() {
+        return next;
     }
 
-    public void setNextUrl(String nextUrl) {
-        this.nextUrl = nextUrl;
+    public void setNext(String nextUrl) {
+        this.next = nextUrl;
+    }
+
+    public String getEnd() {
+        return end;
+    }
+
+    public void setEnd(String end) {
+        this.end = end;
     }
 
     public ChatStatus getStatus() {
@@ -58,25 +66,40 @@ public class ChatDTO {
         this.status = status;
     }
 
+    public void addConversation(ConversationDTO nuevo){
+        this.conversation.add(nuevo);
+    }
+
+    public List<ConversationDTO> getConversation() {
+        return conversation;
+    }
+
+    public void setConversation(List<ConversationDTO> conversation) {
+        this.conversation = conversation;
+    }
+
+
     public static ChatDTO toDTO(Chat chat) {
         if (chat == null) {
             return null;
         }
-        return new ChatDTO(chat.getId(), chat.getName(), chat.getNextToken(), chat.getStatus());
-    }
+        ChatDTO dto =  new ChatDTO(chat.getId(), chat.getName(), null ,chat.getStatus());
+        String urlNext = "/u/" + chat.getUser_id() + "/chats/" + chat.getId();
+        if (chat.getStatus() == ChatStatus.READY) {
+            dto.setNext(urlNext + "/next/" + chat.getNextToken());
+            dto.setEnd(urlNext + "/end");
+        } else {
+            //Si el estado no es Ready, no se permite el uso de next o end.
+            dto.setNext(null);
+            dto.setEnd(null);
+        }
 
-    public List<ConversationDTO> getconversation() {
-        return conversation;
+        return dto;
     }
-
-    public void addConversation(ConversationDTO nuevo){
-        this.conversation.add(nuevo);
-    }
-    
 
     @Override
     public String toString() {
-        return "ChatDTO [id=" + id + ", name=" + name + ", nextUrl=" + nextUrl + ", status=" + status + ", conversation="
+        return "ChatDTO [id=" + id + ", name=" + name + ", nextUrl=" + next + ", status=" + status + ", conversation="
                 + conversation + "]";
     }
 
