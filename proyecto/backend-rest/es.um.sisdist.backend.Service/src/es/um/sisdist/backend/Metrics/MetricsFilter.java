@@ -21,7 +21,7 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 public class MetricsFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
     private static final String START = "start";
-
+    
     @Override
     public void filter(ContainerRequestContext req) {
         req.setProperty(START, System.nanoTime());

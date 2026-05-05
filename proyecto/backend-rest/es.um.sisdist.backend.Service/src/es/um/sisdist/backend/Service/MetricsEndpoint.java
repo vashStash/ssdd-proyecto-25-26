@@ -19,6 +19,7 @@ public class MetricsEndpoint {
             .register(MetricsRegistry.registry)
             .increment();
 
+            
         return MetricsRegistry.registry.scrape();
     }
 }

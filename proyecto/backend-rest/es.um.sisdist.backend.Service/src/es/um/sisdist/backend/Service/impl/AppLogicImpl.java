@@ -89,6 +89,8 @@ public class AppLogicImpl
                 .usePlaintext().build();
         blockingStub = GrpcServiceGrpc.newBlockingStub(channel);
         //asyncStub = GrpcServiceGrpc.newStub(channel);
+
+        MetricsConfig.init();
     }
 
     public static AppLogicImpl getInstance()
