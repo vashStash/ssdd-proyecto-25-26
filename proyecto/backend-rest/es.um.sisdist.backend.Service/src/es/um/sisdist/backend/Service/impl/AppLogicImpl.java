@@ -191,9 +191,12 @@ public class AppLogicImpl
 
         System.out.println("se ha recibido nombre " + userdto.getName() + " y " + userdto.getEmail());
         User user = u.get();
+        
+        if (!userdto.getName().isEmpty() || userdto.getName() != null)
+            user.setName(userdto.getName());
 
-        user.setName(userdto.getName());
-        user.setEmail(userdto.getEmail());
+        if (!userdto.getEmail().isEmpty() || userdto.getEmail() != null)
+            user.setEmail(userdto.getEmail());
 
         System.out.println("cambiando el usuario " + userid + " con nombre " + userdto.getName() + " y email " + userdto.getEmail());
 
@@ -212,7 +215,8 @@ public class AppLogicImpl
         // return 2: old password doesn't match
         if(!user.getPassword_hash().equals(UserUtils.md5pass(pwdDTO.getOldPassword()))) return 2;
 
-        user.setPassword_hash(UserUtils.md5pass(pwdDTO.getNewPassword()));
+        if(!pwdDTO.getNewPassword().isEmpty() || pwdDTO.getNewPassword() != null)
+            user.setPassword_hash(UserUtils.md5pass(pwdDTO.getNewPassword()));
 
         // return 3: error updating password
         if(!dao.updateUser(user)) return 3;
