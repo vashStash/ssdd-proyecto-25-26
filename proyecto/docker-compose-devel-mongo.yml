@@ -56,20 +56,17 @@ services:
     depends_on:
       db-mongo:
         condition: service_healthy
-  
-  # esto esta mal
 
   prometheus-monitor:
-    build: prometheus-monitoring/
-    image: dhi.io/prometheus:<tag>
-    container_name: prometheus
-    ports: 9090:9090
-    env_file: mongo.env
-    depends_on:  
-      ssdd-frontend:
-        condition: service_healthy
-      backend-rest:
-        condition: service_healthy
+    image: prom/prometheus:latest
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports: 
+      - 9090:9090
     restart: unless-stopped
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus-monitoring:/etc/prometheus
+      - prom_data:/prometheus
+
+volumes:
+  prom_data:

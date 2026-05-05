@@ -4,11 +4,10 @@ global:
 scrape_configs:
   - job_name: 'prometheus-front'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['localhost:5010']
 
   # Add your application targets here
-  - job_name: 'my-app'
+  - job_name: 'prometheus-back'
     static_configs:
-      - targets: ['my-app:8080']
-    metrics_path: /metrics
-    scrape_interval: 30s
+      - targets: ['backend-rest:8080']
+    metrics_path: /Service/metrics

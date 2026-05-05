@@ -25,6 +25,10 @@ import es.um.sisdist.models.ResultadoEnvioLlama;
 import es.um.sisdist.models.ChatDTO;
 import es.um.sisdist.models.UserDTO;
 import es.um.sisdist.models.UserDTOUtils;
+import org.glassfish.jersey.server.ResourceConfig;
+import es.um.sisdist.backend.Service.MetricsEndpoint;
+import es.um.sisdist.backend.Config.MetricsConfig;
+import es.um.sisdist.backend.Metrics.MetricsFilter;
 import es.um.sisdist.backend.dao.DAOFactoryImpl;
 import es.um.sisdist.backend.dao.IDAOFactory;
 import es.um.sisdist.backend.dao.chats.IChatDAO;
@@ -85,7 +89,6 @@ public class AppLogicImpl
                 .usePlaintext().build();
         blockingStub = GrpcServiceGrpc.newBlockingStub(channel);
         //asyncStub = GrpcServiceGrpc.newStub(channel);
-        
     }
 
     public static AppLogicImpl getInstance()
